@@ -13,6 +13,17 @@ entries:
     urls:
     - aidbox-0.2.8.tgz
     version: 0.2.8
+  auditbox:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2025-12-07T13:05:17.421140768Z"
+    description: Audit Record Repository by Health Samurai
+    digest: d0aa10a6856c796306781009b8a87fc8efd2cb2a0b8cc2e062ec0ca63f88347c
+    name: auditbox
+    type: application
+    urls:
+    - auditbox-0.1.12.tgz
+    version: 0.1.12
   postgres:
   - apiVersion: v2
     appVersion: "18.1"
@@ -24,4 +35,4 @@ entries:
     urls:
     - postgres-0.0.1.tgz
     version: 0.0.1
-generated: "2025-12-07T13:01:28.757905984Z"
+generated: "2025-12-07T13:05:17.421146168Z"
