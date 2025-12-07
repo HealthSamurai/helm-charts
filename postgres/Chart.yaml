@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: "18.1"
+description: A Helm chart for PostreSQL with WAL-G support
+name: postgres
+type: application
+version: 0.0.1

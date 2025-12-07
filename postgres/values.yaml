@@ -1,0 +1,134 @@
+nameOverride: ""
+fullnameOverride: ""
+
+config: |-
+  # pg_stat_statements.max = 500
+  # pg_stat_statements.save = false
+  # pg_stat_statements.track = top
+  # pg_stat_statements.track_utility = true
+  # shared_preload_libraries = 'pg_stat_statements'
+  #
+  # wal_level = logical
+  # wal_log_hints = on
+  #
+  # archive_mode = on
+  #
+  # Set WAL shipping with WAL-G to storage defined by env with WALG_ prefix
+  # archive_command = 'wal-g wal-push %p'
+  # restore_command = 'wal-g wal-fetch %f %p'
+
+env:
+  PGDATA: /data/pg
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_DB: postgres
+  # Define where WAL_G will store WAL logs / backups
+  # WALG_GS_PREFIX: gs://<bucket>/<path>
+  # WALG_S3_PREFIX: s3://bucket/path/to/folder
+  # WALG_AZ_PREFIX: azure://test-container/walg-folder
+  # WALG_COMPRESSION_METHOD: brotli/lzo/etc
+
+image:
+  repository: postgres
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+imagePullSecrets: []
+
+# WAL-G is an archival restoration tool for PostgreSQL
+walg:
+  enabled: false
+  image:
+    repository: healthsamurai/wal-g
+    tag: v3.0.5
+
+storage:
+  className: ""
+  size: 10Gi
+
+dataVolumeMountPath: /data
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 999
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #     - ALL
+  #   add:
+  #     - NET_BIND_SERVICE
+  #     - CHOWN
+  #     - FSETID
+  #     - DAC_OVERRIDE
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+  port: 5432
+  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: ClusterIP
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  exec:
+    command:
+    - /bin/sh
+    - -c
+    - exec pg_isready -U $POSTGRES_USER -h 127.0.0.1 -p 5432
+  failureThreshold: 6
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 5
+readinessProbe:
+  exec:
+    command:
+    - /bin/sh
+    - -c
+    - -e
+    - exec pg_isready -U $POSTGRES_USER -h 127.0.0.1 -p 5432
+  failureThreshold: 6
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 5
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+  # - name: foo
+  #   secret:
+  #     secretName: mysecret
+  #     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+  # - name: foo
+  #   mountPath: "/etc/foo"
+  #   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
