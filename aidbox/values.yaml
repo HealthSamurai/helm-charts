@@ -4,7 +4,7 @@ host: my.domain.tld
 protocol: http
 
 # -- Aidbox config
-# see [Aidbox environment variables](https://docs.aidbox.app/reference/configuration/environment-variables) for details
+# see [Aidbox environment variables](https://www.health-samurai.io/docs/aidbox/reference/all-settings) for details
 config:
   BOX_WEB_PORT: 8080
   BOX_METRICS_PORT: 8765

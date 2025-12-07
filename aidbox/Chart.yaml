@@ -1,7 +1,7 @@
 apiVersion: v2
 appVersion: edge
 description: Aidbox is FHIR backend platform by Health Samurai
-home: https://www.health-samurai.io/aidbox
+home: https://www.health-samurai.io/fhir-server
 icon: https://aidbox.github.io/helm-charts/icon.png?1712669999
 name: aidbox
 type: application
