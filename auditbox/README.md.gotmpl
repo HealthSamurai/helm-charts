@@ -1,0 +1,34 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Installation
+
+1. Prepare the configuration file.
+
+```yaml
+config:
+  ELASTIC_URI: <Elastic URI>                          # required
+  AUDITBOX_BASE_URL: <Auditbox Base URL>              # required
+  IDP_AUTHORIZE_ENDPOINT: <IDP Authorize Endpoint>    # required
+  IDP_TOKEN_ENDPOINT: <IDP Token Endpoint>            # required
+  IDP_CLIENT_ID: <IDP Client ID>                      # required
+  IDP_CLIENT_SECRET: <IDP Client Secret>              # required
+  IDP_JWKS_URI: <IDP JWKS URI>                        # required
+  AUDITBOX_LOG_LEVEL: <"off"|"info"|"debug"|"error">  # required
+  AUDITBOX_API_AUTH_ENABLED: <true|false>             # required
+  AUDITBOX_ES_AUTH: <'<user>:<password>'>             # optional
+```
+
+
+```console
+helm repo add aidbox https://aidbox.github.io/helm-charts
+
+helm upgrade --install auditbox aidbox/auditbox \
+  --namespace auditbox --create-namespace \
+  --values /path/to/config/file
+```
+
+It will install the Auditbox in the `auditbox` namespace, creating that namespace if it doesn't already exist.
+
+{{ template "chart.valuesSection" . }}

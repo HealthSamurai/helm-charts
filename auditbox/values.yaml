@@ -1,0 +1,109 @@
+replicaCount: 1
+
+image:
+  repository: healthsamurai/auditbox
+  pullPolicy: IfNotPresent
+  tag: "alpha"
+  digest: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: auditbox.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 714Mi
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  failureThreshold: 5
+  httpGet:
+    path: /healthcheck
+    port: main
+  initialDelaySeconds: 60
+  periodSeconds: 30
+readinessProbe:
+  failureThreshold: 10
+  httpGet:
+    path: /healthcheck
+    port: main
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+extraEnvFromConfigMaps: []
+extraEnvFromSecrets: []
+
+affinity: {}
+
+# -- Auditbox config
+config:
+  AUDITBOX_VERIFY_BACKUP_REPOSITORY: false
+  BINDING: 0.0.0.0
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true

@@ -1,0 +1,132 @@
+# -- Host name Aidbox will be available at
+host: my.domain.tld
+# -- Protocol to be used to access Aidbox (http or https)
+protocol: http
+
+# -- Aidbox config
+# see [Aidbox environment variables](https://docs.aidbox.app/reference/configuration/environment-variables) for details
+config:
+  BOX_WEB_PORT: 8080
+  BOX_METRICS_PORT: 8765
+  BOX_DB_PORT: 5432
+
+image:
+  repository: healthsamurai/aidboxone
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# -- Optional array of imagePullSecrets containing private registry credentials
+## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt
+  defaultPath: "/"
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: api
+  periodSeconds: 10
+  failureThreshold: 10
+readinessProbe:
+  httpGet:
+    path: /health
+    port: api
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 5
+startupProbe:
+  httpGet:
+    path: /health
+    port: api
+  initialDelaySeconds: 20
+  periodSeconds:  5
+  failureThreshold: 10
+
+serviceMonitor:
+  enabled: false
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+resources:
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests:
+    cpu: 500m
+    memory: 256Mi
+
+replicaCount: 1
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+service:
+  type: ClusterIP
+  apiPort: 80
+  metricsPort: 80
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+
+extraEnvFromConfigMaps: []
+extraEnvFromSecrets: []
+
+serviceAccount:
+  # -- ServiceAccount to use
+  name: ""
+
+updateStrategy:
+  type: RollingUpdate
+
+affinity: {}
+tolerations: []
+nodeSelector: {}
+
+initContainers: []
+
+auditbox:
+  enabled: false
+  host: auditbox.health-samurai.io
+  port: 8081
+  auth:
+    client: ""
+    host: ""
+    path: ""
+    secret: ""
+    existingSecretName: ""
+
