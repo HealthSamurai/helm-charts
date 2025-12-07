@@ -22,9 +22,9 @@ config:
 
 
 ```console
-helm repo add aidbox https://aidbox.github.io/helm-charts
+helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
 
-helm upgrade --install auditbox aidbox/auditbox \
+helm upgrade --install auditbox healthsamurai/auditbox \
   --namespace auditbox --create-namespace \
   --values /path/to/config/file
 ```
