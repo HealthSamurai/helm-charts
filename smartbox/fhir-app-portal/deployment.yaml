@@ -1,0 +1,104 @@
+# =============================================================================
+# FHIR App Portal Deployment
+# =============================================================================
+# This deployment serves both the Admin Portal and Developer Portal frontends.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fhir-app-portal
+  labels:
+    app: fhir-app-portal
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fhir-app-portal
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: fhir-app-portal
+        version: v1
+    spec:
+      containers:
+      - name: fhir-app-portal
+        image: healthsamurai/fhir-app-portal:edge
+        imagePullPolicy: Always
+        ports:
+        - name: portal
+          containerPort: 8095
+          protocol: TCP
+        - name: dev-portal
+          containerPort: 8096
+          protocol: TCP
+        - name: backend
+          containerPort: 8081
+          protocol: TCP
+
+        # ======================================================================
+        # Environment Variables
+        # ======================================================================
+        # All non-sensitive config loaded from ConfigMap
+        # All sensitive config loaded from Secret
+        envFrom:
+        - configMapRef:
+            name: fhir-app-portal-config
+        - secretRef:
+            name: fhir-app-portal--session-secret
+
+        # ======================================================================
+        # Health Probes
+        # ======================================================================
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8095
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8095
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # ======================================================================
+        # Resource Limits (adjust based on your needs)
+        # ======================================================================
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+
+        # ======================================================================
+        # Security Context Configuration
+        # ======================================================================
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE  # Required to bind to ports 80/81
+
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+

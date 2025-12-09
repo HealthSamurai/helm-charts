@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: aidbox-sandbox
+
+resources:
+  - namespace.yaml
+  - aidbox.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: init-bundle
+    files:
+      - init-bundle.json
+

@@ -1,0 +1,32 @@
+# =============================================================================
+# FHIR App Portal Service
+# =============================================================================
+# Exposes the Admin Portal (8095) and Developer Portal (8096) ports.
+# =============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: fhir-app-portal
+  labels:
+    app: fhir-app-portal
+spec:
+  type: ClusterIP
+  selector:
+    app: fhir-app-portal
+  ports:
+  - name: portal
+    protocol: TCP
+    port: 8095
+    targetPort: 8095
+  - name: developer-portal
+    protocol: TCP
+    port: 8096
+    targetPort: 8096
+
+  # Session affinity for consistent user sessions
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+

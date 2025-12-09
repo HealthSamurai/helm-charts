@@ -1,0 +1,58 @@
+# =============================================================================
+# FHIR App Portal Configuration
+# =============================================================================
+# Update all URLs with your actual domain names before deploying.
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fhir-app-portal-config
+data:
+  # ============================================================================
+  # Backend Service Configuration
+  # ============================================================================
+  NODE_ENV: "production"
+  PORTAL_BACKEND_PORT: "8081"
+  DEPLOYMENT_MODE: "prod"
+
+  # CORS Configuration
+  # IMPORTANT: Update with your actual portal domains
+  CORS_ORIGINS: "https://portal.yourdomain.com,https://portal-sandbox.yourdomain.com"
+
+  # ============================================================================
+  # Frontend URLs (for OAuth redirect URI generation)
+  # ============================================================================
+  # IMPORTANT: Update with your actual portal domains
+  ADMIN_FRONTEND_URL: "https://portal.yourdomain.com"
+  DEVELOPER_FRONTEND_URL: "https://portal-sandbox.yourdomain.com"
+
+  # ============================================================================
+  # Aidbox Instance Configuration (Internal K8s URLs)
+  # ============================================================================
+  # These are internal Kubernetes service URLs - update namespace if needed
+  AIDBOX_DEV_URL: "http://aidbox-api.aidbox-sandbox.svc"
+  AIDBOX_DEV_CLIENT_ID: "smartbox-developer-portal"
+  AIDBOX_ADMIN_URL: "http://aidbox-api.aidbox-portal.svc"
+  AIDBOX_ADMIN_CLIENT_ID: "smartbox-admin-portal"
+
+  # API Client IDs (non-sensitive)
+  ADMIN_API_CLIENT_ID: "admin-api"
+  DEVELOPER_API_CLIENT_ID: "developer-api"
+
+  # ============================================================================
+  # Aidbox Public URLs (for OAuth browser redirects)
+  # ============================================================================
+  # IMPORTANT: Update with your actual Aidbox domains
+  AIDBOX_ADMIN_PUBLIC_URL: "https://aidbox.yourdomain.com"
+  AIDBOX_DEV_PUBLIC_URL: "https://aidbox-sandbox.yourdomain.com"
+
+  # ============================================================================
+  # Frontend Runtime Configuration
+  # ============================================================================
+  # These variables are used by generate-runtime-config.sh
+  # to inject VITE_AIDBOX_URL into the built frontend at runtime
+  # IMPORTANT: Update with your actual Aidbox domains
+  ADMIN_AIDBOX_PUBLIC_URL: "https://aidbox.yourdomain.com"
+  DEVELOPER_AIDBOX_PUBLIC_URL: "https://aidbox-sandbox.yourdomain.com"
+
