@@ -7,7 +7,7 @@
 > Important! Starting from version: `0.2.x`, the repo fully switched to the new environment variable naming conventions introduced in Aidbox version: 2503.
 To keep the old naming convention, stick with version in `0.1.x` More information about naming convention you can find [here](https://docs.aidbox.app/reference/settings).
 
-![Version: 0.2.8](https://img.shields.io/badge/Version-0.2.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.2.9](https://img.shields.io/badge/Version-0.2.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -52,7 +52,7 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | autoscaling.maxReplicas | int | `100` |  |
 | autoscaling.minReplicas | int | `1` |  |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
-| config | object | `{"BOX_DB_PORT":5432,"BOX_METRICS_PORT":8765,"BOX_WEB_PORT":8080}` | Aidbox config see [Aidbox environment variables](https://docs.aidbox.app/reference/configuration/environment-variables) for details |
+| config | object | `{"BOX_DB_PORT":5432,"BOX_METRICS_PORT":8765,"BOX_WEB_PORT":8080}` | Aidbox config see [Aidbox environment variables](https://www.health-samurai.io/docs/aidbox/reference/all-settings) for details |
 | extraEnvFromConfigMaps | list | `[]` |  |
 | extraEnvFromSecrets | list | `[]` |  |
 | fullnameOverride | string | `""` |  |
