@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartbox.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.portal.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "smartbox.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "smartbox.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.portal.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "smartbox.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.portal.securityContext | nindent 12 }}
+          image: "{{ .Values.portal.image.repository }}{{ if .Values.portal.image.digest }}@{{ .Values.portal.image.digest }}{{ else }}:{{ .Values.portal.image.tag | default .Chart.AppVersion }}{{ end }}"
+          imagePullPolicy: {{ .Values.portal.image.pullPolicy }}
+          ports:
+            - name: portal
+              containerPort: {{ .Values.portal.service.portalPort }}
+              protocol: TCP
+            - name: dev-portal
+              containerPort: {{ .Values.portal.service.developerPort }}
+              protocol: TCP
+            - name: backend
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "smartbox.fullname" . }}
+            - secretRef:
+                name: {{ include "smartbox.fullname" . }}
+            {{- range .Values.extraEnvFromConfigMaps }}
+            - configMapRef:
+                name: {{ . }}
+            {{- end }}
+            {{- range .Values.extraEnvFromSecrets }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.portal.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.portal.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.portal.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+

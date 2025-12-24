@@ -1,0 +1,24 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartbox.database.fullname" . }}-envs
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+data:
+  POSTGRES_DB: {{ .Values.database.config.POSTGRES_DB | quote }}
+  PGDATA: {{ .Values.database.config.PGDATA | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartbox.database.fullname" . }}-config
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+data:
+  postgres.conf: |
+    {{- .Values.database.postgresConfig | nindent 4 }}
+{{- end }}
+

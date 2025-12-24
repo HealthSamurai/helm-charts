@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: aidbox-portal
-  labels:
-    app: aidbox
-    environment: production
-    component: portal
-

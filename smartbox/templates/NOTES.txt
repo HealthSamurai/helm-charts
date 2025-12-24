@@ -1,0 +1,82 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named: {{ .Release.Name }}
+
+=============================================================================
+FHIR App Portal
+=============================================================================
+{{- if .Values.ingress.enabled }}
+Access the portals at:
+  - Admin Portal:     https://{{ .Values.domain.adminPortal }}
+  - Developer Portal: https://{{ .Values.domain.developerPortal }}
+{{- else }}
+To access the FHIR App Portal, run:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "smartbox.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8095:8095 8096:8096
+
+Then access:
+  - Admin Portal:     http://localhost:8095
+  - Developer Portal: http://localhost:8096
+{{- end }}
+
+{{- if .Values.database.enabled }}
+=============================================================================
+Database (AidboxDB)
+=============================================================================
+Database service: {{ include "smartbox.database.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.database.service.port }}
+
+To connect to the database:
+  kubectl exec -it -n {{ .Release.Namespace }} statefulset/{{ include "smartbox.database.fullname" . }} -- psql -U postgres
+{{- end }}
+
+=============================================================================
+Aidbox Instances
+=============================================================================
+{{- if .Values.aidboxPortal.enabled }}
+Aidbox Portal init bundle ConfigMap: {{ include "smartbox.fullname" . }}-portal-init-bundle
+{{- end }}
+{{- if .Values.aidboxSandbox.enabled }}
+Aidbox Sandbox init bundle ConfigMap: {{ include "smartbox.fullname" . }}-sandbox-init-bundle
+{{- end }}
+
+To deploy Aidbox instances, you have two options:
+
+Option A: Using Flux CD
+  Apply the HelmRelease resources from the generated init bundle ConfigMaps
+  with your Aidbox Helm values.
+
+Option B: Using Helm CLI
+  1. Add the Aidbox Helm repository:
+     helm repo add aidbox https://aidbox.github.io/helm-charts
+
+  2. Create init-bundle ConfigMaps in Aidbox namespaces:
+     kubectl create namespace aidbox-portal
+     kubectl create configmap init-bundle -n aidbox-portal \
+       --from-file=init-bundle.json=<(kubectl get cm {{ include "smartbox.fullname" . }}-portal-init-bundle -n {{ .Release.Namespace }} -o jsonpath='{.data.init-bundle\.json}')
+
+  3. Deploy Aidbox with Helm:
+     helm install aidbox aidbox/aidbox -n aidbox-portal \
+       --set host={{ .Values.domain.adminAidbox }} \
+       --set protocol=https \
+       --set config.BOX_DB_HOST={{ include "smartbox.database.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local \
+       ... (see values.yaml for full configuration)
+
+=============================================================================
+Required Secrets
+=============================================================================
+Make sure the following secrets are created:
+
+1. Portal secrets (created by this chart):
+   - {{ include "smartbox.fullname" . }} (SESSION_SECRET, ADMIN_API_CLIENT_SECRET, DEVELOPER_API_CLIENT_SECRET)
+
+{{- if .Values.database.enabled }}
+2. Database secrets (created by this chart):
+   - {{ include "smartbox.database.fullname" . }} (POSTGRES_USER, POSTGRES_PASSWORD)
+{{- end }}
+
+3. Aidbox secrets (create manually in Aidbox namespaces):
+   - aidbox-secrets: AIDBOX_LICENSE, BOX_AUTH_KEYS_SECRET, BOX_ADMIN_PASSWORD
+   - postgres-secrets: BOX_DB_USER, BOX_DB_PASSWORD
+
+For more information, visit: https://docs.aidbox.app
+
