@@ -1,0 +1,17 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartbox.database.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  selector:
+    {{- include "smartbox.database.selectorLabels" . | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.database.service.port }}
+      targetPort: {{ .Values.database.service.port }}
+{{- end }}
+

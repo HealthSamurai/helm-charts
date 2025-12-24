@@ -1,0 +1,47 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "smartbox.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.domain.adminPortal | quote }}
+        - {{ .Values.domain.developerPortal | quote }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    # Admin Portal
+    - host: {{ .Values.domain.adminPortal | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "smartbox.fullname" . }}
+                port:
+                  number: {{ .Values.portal.service.portalPort }}
+    # Developer Portal (Sandbox)
+    - host: {{ .Values.domain.developerPortal | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "smartbox.fullname" . }}
+                port:
+                  number: {{ .Values.portal.service.developerPort }}
+{{- end }}
+

@@ -1,0 +1,19 @@
+{{- if and .Values.database.enabled .Values.database.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "smartbox.database.fullname" . }}-data
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  accessModes:
+    {{- toYaml .Values.database.persistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.database.persistence.size }}
+  {{- if .Values.database.persistence.storageClassName }}
+  storageClassName: {{ .Values.database.persistence.storageClassName | quote }}
+  {{- end }}
+{{- end }}
+
