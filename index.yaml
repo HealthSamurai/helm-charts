@@ -36,6 +36,25 @@ entries:
     urls:
     - auditbox-0.1.12.tgz
     version: 0.1.12
+  mdm:
+  - apiVersion: v2
+    created: "2026-01-16T09:12:31.292830219Z"
+    dependencies:
+    - alias: frontend
+      name: mdm-frontend
+      repository: file://subcharts/frontend
+      version: '*'
+    - alias: backend
+      name: mdm-backend
+      repository: file://subcharts/backend
+      version: '*'
+    description: A Helm chart for Kubernetes
+    digest: 57843500ba8ddde397756fc1a13d9811a2a41d0ac6ee16c9f6e7eb59feb2b6ab
+    name: mdm
+    type: application
+    urls:
+    - mdm-0.1.1.tgz
+    version: 0.1.1
   mpi:
   - apiVersion: v2
     appVersion: 1.0.0
@@ -58,4 +77,4 @@ entries:
     urls:
     - postgres-0.0.1.tgz
     version: 0.0.1
-generated: "2025-12-23T09:08:13.428480251Z"
+generated: "2026-01-16T09:12:31.292838785Z"
