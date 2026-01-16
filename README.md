@@ -8,7 +8,7 @@ To get started, simply browse the collections below and follow the easy deployme
 
 - [Aidbox](./aidbox)
 - [Auditbox](./auditbox)
-- [MPI](./mpi)
+- [MDM](./mdm)
 - [PostgreSQL](./postgres)
 
 ***
