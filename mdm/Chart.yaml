@@ -7,9 +7,9 @@ version: 0.1.1
 dependencies:
   - name: mdm-frontend
     version: "*"
-    repository: "file://./charts/frontend"
+    repository: file://subcharts/frontend
     alias: frontend
   - name: mdm-backend
     version: "*"
-    repository: "file://./charts/backend"
+    repository: file://subcharts/backend
     alias: backend
