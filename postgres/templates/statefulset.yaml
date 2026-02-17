@@ -89,8 +89,10 @@ spec:
               subPath: tmp-dir
             - mountPath: /dev/shm
               name: dshm
+            {{- if .Values.storage.attach }}
             - mountPath: {{ .Values.dataVolumeMountPath }}
               name: data
+            {{- end }}
             {{- if .Values.walg.enabled }}
             - mountPath: /usr/local/sbin
               name: empty-dir
