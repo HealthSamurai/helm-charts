@@ -129,6 +129,7 @@ spec:
         {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+  {{- if .Values.storage.attach }}
   volumeClaimTemplates:
   - apiVersion: v1
     kind: PersistentVolumeClaim
@@ -143,3 +144,4 @@ spec:
       {{- if .Values.storage.className }}
       storageClassName: {{ .Values.storage.className }}
       {{- end }}
+  {{- end }}

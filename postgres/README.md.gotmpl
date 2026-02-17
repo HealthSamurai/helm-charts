@@ -1,0 +1,15 @@
+{{ template "chart.header" . }}
+
+[PostgreSQL](https://www.postgresql.org/)
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+```console
+helm repo add health-samurai https://healthsamurai.github.io/helm-charts
+```
+
+```console
+helm upgrade --install postgres health-samurai/postgres --values /path/to/config/file
+```
+
+{{ template "chart.valuesSection" . }}

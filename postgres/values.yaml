@@ -44,9 +44,11 @@ walg:
     tag: v3.0.5
 
 storage:
+  attach: true
   className: ""
   size: 10Gi
 
+# make sure env.PGDATA uses this mount path
 dataVolumeMountPath: /data
 
 serviceAccount:
@@ -132,3 +134,5 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+extraEnvFromSecrets: []

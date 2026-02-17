@@ -6,4 +6,6 @@ metadata:
     {{- include "postgres.labels" . | nindent 4 }}
 data:
   postgres.conf: |-
+    # it is intended to accept external connections
+    listen_addresses = '*'
     {{- .Values.config | nindent 4 }}
