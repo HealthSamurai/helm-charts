@@ -68,6 +68,16 @@ entries:
     version: 0.1.0
   postgres:
   - apiVersion: v2
+    appVersion: "18"
+    created: "2026-02-17T10:45:14.156716158Z"
+    description: A Helm chart for PostreSQL with WAL-G support
+    digest: 87461b70c0f6318175a41dee135d5fb64c572d6094052a8693eb772b06a42873
+    name: postgres
+    type: application
+    urls:
+    - postgres-0.0.2.tgz
+    version: 0.0.2
+  - apiVersion: v2
     appVersion: "18.1"
     created: "2025-12-07T12:46:40.123449861Z"
     description: A Helm chart for PostreSQL with WAL-G support
@@ -77,4 +87,4 @@ entries:
     urls:
     - postgres-0.0.1.tgz
     version: 0.0.1
-generated: "2026-01-16T09:12:31.292838785Z"
+generated: "2026-02-17T10:45:14.156729964Z"
