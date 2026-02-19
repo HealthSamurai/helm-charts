@@ -1,0 +1,336 @@
+# =============================================================================
+# Smartbox Helm Chart Values
+# =============================================================================
+# FHIR App Portal solution with Aidbox backend
+# =============================================================================
+
+# -- Domain configuration (REQUIRED - update with your actual domains)
+domain:
+  # Base domain for all services
+  baseDomain: "yourdomain.com"
+  # Admin portal hostname
+  adminPortal: "portal.yourdomain.com"
+  # Developer/sandbox portal hostname
+  developerPortal: "portal-sandbox.yourdomain.com"
+  # Admin Aidbox hostname
+  adminAidbox: "aidbox.yourdomain.com"
+  # Sandbox Aidbox hostname
+  sandboxAidbox: "aidbox-sandbox.yourdomain.com"
+
+# =============================================================================
+# FHIR App Portal Configuration
+# =============================================================================
+portal:
+  replicaCount: 1
+
+  image:
+    repository: healthsamurai/fhir-app-portal
+    pullPolicy: Always
+    tag: "edge"
+    digest: ""
+
+  imagePullSecrets: []
+
+  # -- Portal configuration
+  config:
+    NODE_ENV: "production"
+    PORTAL_BACKEND_PORT: "8081"
+    DEPLOYMENT_MODE: "prod"
+    # Aidbox internal K8s service URLs
+    AIDBOX_DEV_URL: "http://aidbox-api.aidbox-sandbox.svc"
+    AIDBOX_DEV_CLIENT_ID: "smartbox-developer-portal"
+    AIDBOX_ADMIN_URL: "http://aidbox-api.aidbox-portal.svc"
+    AIDBOX_ADMIN_CLIENT_ID: "smartbox-admin-portal"
+    # API Client IDs (non-sensitive)
+    ADMIN_API_CLIENT_ID: "admin-api"
+    DEVELOPER_API_CLIENT_ID: "developer-api"
+
+  service:
+    type: ClusterIP
+    # Admin portal port
+    portalPort: 8095
+    # Developer portal port
+    developerPort: 8096
+    # Session affinity for consistent user sessions
+    sessionAffinity:
+      enabled: true
+      timeoutSeconds: 10800
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: portal
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: portal
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+      add:
+        - NET_BIND_SERVICE
+
+  # -- Portal secrets (REQUIRED)
+  secrets:
+    # Session secret for cookie encryption - generate with: openssl rand -hex 32
+    SESSION_SECRET: ""
+    # API Client Secrets (for OAuth between portal and Aidbox)
+    ADMIN_API_CLIENT_SECRET: ""
+    DEVELOPER_API_CLIENT_SECRET: ""
+
+# =============================================================================
+# Ingress Configuration
+# =============================================================================
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/upstream-vhost: "$host"
+    nginx.ingress.kubernetes.io/preserve-host: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/enable-gzip: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  tls:
+    enabled: true
+    secretName: fhir-portal-tls
+
+# =============================================================================
+# Database Configuration (AidboxDB)
+# =============================================================================
+database:
+  enabled: true
+
+  image:
+    repository: healthsamurai/aidboxdb
+    tag: "16.1"
+    pullPolicy: Always
+
+  # -- PostgreSQL configuration
+  config:
+    POSTGRES_DB: postgres
+    PGDATA: /data/pg
+
+  # -- PostgreSQL server configuration
+  postgresConfig: |
+    listen_addresses = '*'
+    max_replication_slots = 30
+    max_wal_senders = 30
+    max_wal_size = '1GB'
+    max_worker_processes = 128
+    pg_stat_statements.max = 500
+    pg_stat_statements.save = false
+    pg_stat_statements.track = top
+    pg_stat_statements.track_utility = true
+    shared_buffers = '1GB'
+    shared_preload_libraries = 'pg_stat_statements'
+    synchronous_commit = off
+    track_io_timing = on
+    wal_level = logical
+    wal_log_hints = on
+
+  persistence:
+    enabled: true
+    size: 50Gi
+    # storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+
+  service:
+    port: 5432
+
+  # -- Database secrets (REQUIRED if database.enabled)
+  secrets:
+    POSTGRES_USER: ""
+    POSTGRES_PASSWORD: ""
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+
+# =============================================================================
+# Aidbox Portal Configuration
+# =============================================================================
+aidboxPortal:
+  enabled: true
+
+  # -- Aidbox image tag
+  imageTag: "2510"
+
+  # -- Aidbox configuration
+  config:
+    BOX_ID: aidbox-portal
+    BOX_INSTANCE_NAME: aidbox-portal
+    BOX_WEB_PORT: 8080
+    BOX_DB_PORT: 5432
+    BOX_DB_DATABASE: portal
+    BOX_INIT_BUNDLE: file:///init-bundle/init-bundle.json
+    BOX_BOOTSTRAP_FHIR_PACKAGES: 'hl7.fhir.r4.core#4.0.1'
+    BOX_COMPATIBILITY_VALIDATION_JSON__SCHEMA_REGEX: '#{:fhir-datetime}'
+    BOX_FHIR_BUNDLE_EXECUTION_VALIDATION_MODE: limited
+    BOX_FHIR_COMPLIANT_MODE: true
+    BOX_FHIR_CORRECT_AIDBOX_FORMAT: true
+    BOX_FHIR_CREATEDAT_URL: https://aidbox.app/ex/createdAt
+    BOX_FHIR_SCHEMA_VALIDATION: true
+    BOX_FHIR_SEARCH_AUTHORIZE_INLINE_REQUESTS: false
+    BOX_FHIR_SEARCH_CHAIN_SUBSELECT: true
+    BOX_FHIR_SEARCH_COMPARISONS: true
+    BOX_FHIR_LEGACY_FCE_PACKAGE: us-core-extensions.legacy.aidbox#0.0.0
+    BOX_FHIR_VALIDATION_SKIP_REFERENCE: true
+    BOX_MODULE_SDC_STRICT_ACCESS_CONTROL: true
+    BOX_SEARCH_INCLUDE_CONFORMANT: true
+    BOX_SECURITY_AUDIT_LOG_ENABLED: true
+    BOX_SECURITY_DEV_MODE: false
+    BOX_SETTINGS_MODE: read-write
+    BOX_SECURITY_ORGBAC_ENABLED: true
+    BOX_USAGE_STATS: false
+    BOX_OBSERVABILITY_STDOUT_PRETTY_LOG_LEVEL: info
+    BOX_METRICS_PORT: 8765
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+  startupProbe:
+    initialDelaySeconds: 50
+    periodSeconds: 10
+    failureThreshold: 20
+
+  serviceMonitor:
+    enabled: false
+
+# =============================================================================
+# Aidbox Sandbox Configuration
+# =============================================================================
+aidboxSandbox:
+  enabled: true
+
+  # -- Aidbox image tag
+  imageTag: "2510"
+
+  # -- Aidbox configuration
+  config:
+    BOX_ID: aidbox-sandbox
+    BOX_INSTANCE_NAME: aidbox-sandbox
+    BOX_WEB_PORT: 8080
+    BOX_DB_PORT: 5432
+    BOX_DB_DATABASE: sandbox
+    BOX_INIT_BUNDLE: file:///init-bundle/init-bundle.json
+    BOX_BOOTSTRAP_FHIR_PACKAGES: 'hl7.fhir.r4.core#4.0.1'
+    BOX_COMPATIBILITY_VALIDATION_JSON__SCHEMA_REGEX: '#{:fhir-datetime}'
+    BOX_FHIR_BUNDLE_EXECUTION_VALIDATION_MODE: limited
+    BOX_FHIR_COMPLIANT_MODE: true
+    BOX_FHIR_CORRECT_AIDBOX_FORMAT: true
+    BOX_FHIR_CREATEDAT_URL: https://aidbox.app/ex/createdAt
+    BOX_FHIR_SCHEMA_VALIDATION: true
+    BOX_FHIR_SEARCH_AUTHORIZE_INLINE_REQUESTS: false
+    BOX_FHIR_SEARCH_CHAIN_SUBSELECT: true
+    BOX_FHIR_SEARCH_COMPARISONS: true
+    BOX_FHIR_LEGACY_FCE_PACKAGE: us-core-extensions.legacy.aidbox#0.0.0
+    BOX_MODULE_SDC_STRICT_ACCESS_CONTROL: true
+    BOX_SEARCH_INCLUDE_CONFORMANT: true
+    BOX_SECURITY_AUDIT_LOG_ENABLED: true
+    BOX_SECURITY_DEV_MODE: false
+    BOX_SETTINGS_MODE: read-write
+    BOX_SECURITY_ORGBAC_ENABLED: true
+    BOX_USAGE_STATS: false
+    BOX_OBSERVABILITY_STDOUT_PRETTY_LOG_LEVEL: info
+    BOX_METRICS_PORT: 8765
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+  startupProbe:
+    initialDelaySeconds: 50
+    periodSeconds: 10
+    failureThreshold: 20
+
+  serviceMonitor:
+    enabled: false
+
+# =============================================================================
+# Global Settings
+# =============================================================================
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+extraEnvFromConfigMaps: []
+extraEnvFromSecrets: []
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+

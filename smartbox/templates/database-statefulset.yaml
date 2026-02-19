@@ -1,0 +1,69 @@
+{{- if .Values.database.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "smartbox.database.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "smartbox.database.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "smartbox.database.fullname" . }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartbox.database.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          args:
+            - --config_file=/etc/configs/postgres.conf
+          ports:
+            - containerPort: {{ .Values.database.service.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "smartbox.database.fullname" . }}-envs
+            - secretRef:
+                name: {{ include "smartbox.database.fullname" . }}
+          volumeMounts:
+            - name: db-data
+              mountPath: /data
+              subPath: pg
+            - name: db-config
+              mountPath: /etc/configs
+            - name: db-dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - psql -c 'SELECT 1'
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+          resources:
+            {{- toYaml .Values.database.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.database.persistence.enabled }}
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: {{ include "smartbox.database.fullname" . }}-data
+        {{- else }}
+        - name: db-data
+          emptyDir: {}
+        {{- end }}
+        - name: db-config
+          configMap:
+            name: {{ include "smartbox.database.fullname" . }}-config
+        - name: db-dshm
+          emptyDir:
+            medium: Memory
+{{- end }}
+

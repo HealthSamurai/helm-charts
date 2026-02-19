@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartbox.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+data:
+  # Backend Service Configuration
+  NODE_ENV: {{ .Values.portal.config.NODE_ENV | quote }}
+  PORTAL_BACKEND_PORT: {{ .Values.portal.config.PORTAL_BACKEND_PORT | quote }}
+  DEPLOYMENT_MODE: {{ .Values.portal.config.DEPLOYMENT_MODE | quote }}
+
+  # CORS Configuration
+  CORS_ORIGINS: "https://{{ .Values.domain.adminPortal }},https://{{ .Values.domain.developerPortal }}"
+
+  # Frontend URLs (for OAuth redirect URI generation)
+  ADMIN_FRONTEND_URL: "https://{{ .Values.domain.adminPortal }}"
+  DEVELOPER_FRONTEND_URL: "https://{{ .Values.domain.developerPortal }}"
+
+  # Aidbox Instance Configuration (Internal K8s URLs)
+  AIDBOX_DEV_URL: {{ .Values.portal.config.AIDBOX_DEV_URL | quote }}
+  AIDBOX_DEV_CLIENT_ID: {{ .Values.portal.config.AIDBOX_DEV_CLIENT_ID | quote }}
+  AIDBOX_ADMIN_URL: {{ .Values.portal.config.AIDBOX_ADMIN_URL | quote }}
+  AIDBOX_ADMIN_CLIENT_ID: {{ .Values.portal.config.AIDBOX_ADMIN_CLIENT_ID | quote }}
+
+  # API Client IDs
+  ADMIN_API_CLIENT_ID: {{ .Values.portal.config.ADMIN_API_CLIENT_ID | quote }}
+  DEVELOPER_API_CLIENT_ID: {{ .Values.portal.config.DEVELOPER_API_CLIENT_ID | quote }}
+
+  # Aidbox Public URLs (for OAuth browser redirects)
+  AIDBOX_ADMIN_PUBLIC_URL: "https://{{ .Values.domain.adminAidbox }}"
+  AIDBOX_DEV_PUBLIC_URL: "https://{{ .Values.domain.sandboxAidbox }}"
+
+  # Frontend Runtime Configuration
+  ADMIN_AIDBOX_PUBLIC_URL: "https://{{ .Values.domain.adminAidbox }}"
+  DEVELOPER_AIDBOX_PUBLIC_URL: "https://{{ .Values.domain.sandboxAidbox }}"
+

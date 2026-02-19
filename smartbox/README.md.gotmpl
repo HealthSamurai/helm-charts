@@ -1,10 +1,10 @@
-# Smartbox
+{{ template "chart.header" . }}
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
 
 ## Description
 
-FHIR App Portal solution with Aidbox backend by Health Samurai
+{{ template "chart.description" . }}
 
 This Helm chart deploys the FHIR App Portal solution which includes:
 
@@ -119,46 +119,5 @@ Repeat similar steps for Aidbox Sandbox.
            └─────────────────┘
 ```
 
-## Values
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| domain.baseDomain | string | `"yourdomain.com"` | Base domain for all services |
-| domain.adminPortal | string | `"portal.yourdomain.com"` | Admin portal hostname |
-| domain.developerPortal | string | `"portal-sandbox.yourdomain.com"` | Developer/sandbox portal hostname |
-| domain.adminAidbox | string | `"aidbox.yourdomain.com"` | Admin Aidbox hostname |
-| domain.sandboxAidbox | string | `"aidbox-sandbox.yourdomain.com"` | Sandbox Aidbox hostname |
-| portal.replicaCount | int | `1` | Number of portal replicas |
-| portal.image.repository | string | `"healthsamurai/fhir-app-portal"` | Portal image repository |
-| portal.image.tag | string | `"edge"` | Portal image tag |
-| portal.secrets.SESSION_SECRET | string | `""` | Session secret for cookie encryption |
-| portal.secrets.ADMIN_API_CLIENT_SECRET | string | `""` | Admin API client secret |
-| portal.secrets.DEVELOPER_API_CLIENT_SECRET | string | `""` | Developer API client secret |
-| database.enabled | bool | `true` | Enable AidboxDB deployment |
-| database.image.repository | string | `"healthsamurai/aidboxdb"` | Database image repository |
-| database.image.tag | string | `"16.1"` | Database image tag |
-| database.persistence.enabled | bool | `true` | Enable persistent storage |
-| database.persistence.size | string | `"50Gi"` | Storage size |
-| database.secrets.POSTGRES_USER | string | `""` | PostgreSQL username |
-| database.secrets.POSTGRES_PASSWORD | string | `""` | PostgreSQL password |
-| ingress.enabled | bool | `true` | Enable ingress |
-| ingress.className | string | `"nginx"` | Ingress class name |
-| aidboxPortal.enabled | bool | `true` | Enable Aidbox Portal init bundle |
-| aidboxSandbox.enabled | bool | `true` | Enable Aidbox Sandbox init bundle |
-
-## Required Secrets
-
-| Namespace | Secret Name | Keys |
-|-----------|-------------|------|
-| smartbox | `<release>-smartbox` | `SESSION_SECRET`, `ADMIN_API_CLIENT_SECRET`, `DEVELOPER_API_CLIENT_SECRET` |
-| smartbox | `<release>-smartbox-db` | `POSTGRES_USER`, `POSTGRES_PASSWORD` |
-| aidbox-portal | `aidbox-secrets` | `AIDBOX_LICENSE`, `BOX_AUTH_KEYS_SECRET`, `BOX_ADMIN_PASSWORD` |
-| aidbox-portal | `postgres-secrets` | `BOX_DB_USER`, `BOX_DB_PASSWORD` |
-| aidbox-sandbox | `aidbox-secrets` | `AIDBOX_LICENSE`, `BOX_AUTH_KEYS_SECRET`, `BOX_ADMIN_PASSWORD` |
-| aidbox-sandbox | `postgres-secrets` | `BOX_DB_USER`, `BOX_DB_PASSWORD` |
-
-## Support
-
-- **Aidbox Documentation**: https://docs.aidbox.app
-- **Aidbox Support**: https://aidbox.app/support
+{{ template "chart.valuesSection" . }}
 

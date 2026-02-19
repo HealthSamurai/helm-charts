@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartbox.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.portal.service.type }}
+  selector:
+    {{- include "smartbox.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: portal
+      protocol: TCP
+      port: {{ .Values.portal.service.portalPort }}
+      targetPort: portal
+    - name: developer-portal
+      protocol: TCP
+      port: {{ .Values.portal.service.developerPort }}
+      targetPort: dev-portal
+  {{- if .Values.portal.service.sessionAffinity.enabled }}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.portal.service.sessionAffinity.timeoutSeconds }}
+  {{- end }}
+
