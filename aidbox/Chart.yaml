@@ -5,4 +5,4 @@ home: https://www.health-samurai.io/fhir-server
 icon: https://healthsamurai.github.io/helm-charts/aidbox.png?1766480680
 name: aidbox
 type: application
-version: 0.2.9
+version: 0.2.10

@@ -103,6 +103,7 @@ securityContext:
   #   - ALL
   # readOnlyRootFilesystem: true
 
+extraEnvs: []
 extraEnvFromConfigMaps: []
 extraEnvFromSecrets: []
 
