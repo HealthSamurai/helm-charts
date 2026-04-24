@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: "0.1.0"
+name: mdmbox
+description: Probabilistic record matching service by Health Samurai
+icon: https://aidbox.github.io/helm-charts/icon.png?1712669999
+type: application
+version: 0.1.0
