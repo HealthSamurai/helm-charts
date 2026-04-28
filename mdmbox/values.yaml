@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: healthsamurai/mdmbox
   pullPolicy: IfNotPresent
-  tag: "edge"
+  tag: ""
   digest: ""
 
 imagePullSecrets: []
@@ -111,7 +111,7 @@ updateStrategy:
 # keep only mdmbox-specific vars here. MDMBOX_HTTP_PORT is injected from
 # .Values.service.port in deployment.yaml (single source of truth).
 config:
-  JAVA_OPTS: ""
+  JAVA_OPTS: "-XX:MaxRAMPercentage=75"
 
 # Additional volumes on the output Deployment definition.
 volumes: []
