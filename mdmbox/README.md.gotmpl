@@ -1,0 +1,37 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Installation
+
+1. Obtain an mdmbox [license](https://www.health-samurai.io/docs/aidbox/overview/aidbox-user-portal/licenses) from Health Samurai.
+2. mdmbox connects to the same PostgreSQL database as Aidbox and reuses Aidbox's `BOX_DB_*` settings. Point the chart at an existing `ConfigMap` and `Secret` that hold those values — they are loaded into the pod via `envFrom`:
+
+   ```yaml
+   aidboxConfigMap: <ConfigMap with BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE>
+   aidboxSecret: <Secret with BOX_DB_USER, BOX_DB_PASSWORD>
+   ```
+
+3. Put mdmbox-specific environment variables (license, `JAVA_OPTS`, etc.) under `config:`. The chart renders them into its own `ConfigMap` and mounts it into the pod:
+
+   ```yaml
+   config:
+     MDMBOX_LICENSE: <your license string>
+     JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+   ```
+
+   For values that should not live in plain Helm values (secrets, tokens), put them in your own `ConfigMap`/`Secret` and reference them via `extraEnvFromConfigMaps` / `extraEnvFromSecrets`.
+
+```console
+helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
+
+helm upgrade --install mdmbox healthsamurai/mdmbox \
+  --namespace mdmbox --create-namespace \
+  --values /path/to/config/file
+```
+
+It will install mdmbox in the `mdmbox` namespace, creating that namespace if it doesn't already exist.
+
+{{ template "chart.valuesSection" . }}
