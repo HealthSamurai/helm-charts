@@ -1,0 +1,127 @@
+replicaCount: 1
+
+image:
+  repository: healthsamurai/mdmbox
+  pullPolicy: IfNotPresent
+  tag: ""
+  digest: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: mdmbox.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: mdmbox-tls
+  #    hosts:
+  #      - mdmbox.local
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  # limits:
+  #   cpu: 2
+  #   memory: 2Gi
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: main
+  periodSeconds: 10
+  failureThreshold: 10
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: main
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 5
+startupProbe:
+  httpGet:
+    path: /readyz
+    port: main
+  initialDelaySeconds: 20
+  periodSeconds: 5
+  # 90 * 5s = 7.5 min — allows libox bootstrap (FHIR packages download/parse) on cold start
+  failureThreshold: 90
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# -- Name of an existing ConfigMap with Aidbox env vars
+# (e.g. BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE). Required.
+aidboxConfigMap: ""
+
+# -- Name of an existing Secret with Aidbox credentials
+# (e.g. BOX_DB_USER, BOX_DB_PASSWORD). Required.
+aidboxSecret: ""
+
+extraEnvFromConfigMaps: []
+extraEnvFromSecrets: []
+
+updateStrategy:
+  type: RollingUpdate
+
+# -- mdmbox config. All BOX_* env vars come from aidboxConfigMap/aidboxSecret;
+# keep only mdmbox-specific vars here. MDMBOX_HTTP_PORT is injected from
+# .Values.service.port in deployment.yaml (single source of truth).
+config:
+  JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
