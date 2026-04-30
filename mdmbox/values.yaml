@@ -93,23 +93,34 @@ tolerations: []
 
 affinity: {}
 
-# -- Name of an existing ConfigMap with Aidbox env vars
-# (e.g. BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE). Required.
+# -- Name of an existing ConfigMap with BOX_DB_* env vars
+# (e.g. BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE). Optional —
+# convenience hook for the shared-Aidbox scenario where you already
+# have an Aidbox ConfigMap. For standalone deployments leave empty
+# and supply BOX_DB_* via .Values.config and/or extraEnvFromSecrets.
 aidboxConfigMap: ""
 
-# -- Name of an existing Secret with Aidbox credentials
-# (e.g. BOX_DB_USER, BOX_DB_PASSWORD). Required.
+# -- Name of an existing Secret with BOX_DB_USER, BOX_DB_PASSWORD.
+# Optional — same shared-Aidbox convenience as aidboxConfigMap.
+# For standalone, use extraEnvFromSecrets to mount your own Secret.
 aidboxSecret: ""
 
+# -- Names of additional ConfigMaps loaded into the pod via envFrom.
 extraEnvFromConfigMaps: []
+
+# -- Names of additional Secrets loaded into the pod via envFrom.
+# Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode.
 extraEnvFromSecrets: []
 
 updateStrategy:
   type: RollingUpdate
 
-# -- mdmbox config. All BOX_* env vars come from aidboxConfigMap/aidboxSecret;
-# keep only mdmbox-specific vars here. MDMBOX_HTTP_PORT is injected from
-# .Values.service.port in deployment.yaml (single source of truth).
+# -- mdmbox config rendered into the chart's own ConfigMap.
+# Holds mdmbox-specific env vars (license, JAVA_OPTS, …) and, in
+# standalone mode, non-secret BOX_DB_* values (BOX_DB_HOST/PORT/DATABASE).
+# Do NOT put credentials here — use extraEnvFromSecrets instead.
+# MDMBOX_HTTP_PORT is injected from .Values.service.port in deployment.yaml
+# (single source of truth).
 config:
   JAVA_OPTS: "-XX:MaxRAMPercentage=75"
 
