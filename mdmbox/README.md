@@ -6,48 +6,82 @@ Probabilistic record matching service by Health Samurai
 
 ## Installation
 
-1. Obtain an mdmbox [license](https://www.health-samurai.io/docs/aidbox/overview/aidbox-user-portal/licenses) from Health Samurai.
-2. mdmbox connects to the same PostgreSQL database as Aidbox and reuses Aidbox's `BOX_DB_*` settings. Point the chart at an existing `ConfigMap` and `Secret` that hold those values — they are loaded into the pod via `envFrom`:
+mdmbox needs a PostgreSQL 14+ database. The chart supports two deployment modes:
 
-   ```yaml
-   aidboxConfigMap: <ConfigMap with BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE>
-   aidboxSecret: <Secret with BOX_DB_USER, BOX_DB_PASSWORD>
-   ```
+- **Standalone** — mdmbox runs on its own. You point it at any PostgreSQL.
+- **Alongside Aidbox** — mdmbox shares the same PostgreSQL and reuses Aidbox's `BOX_DB_*` `ConfigMap`/`Secret`.
 
-3. Put mdmbox-specific environment variables (license, `JAVA_OPTS`, etc.) under `config:`. The chart renders them into its own `ConfigMap` and mounts it into the pod:
+The chart itself does not provision PostgreSQL — bring your own (managed service, an in-cluster operator, or the [bitnami/postgresql](https://artifacthub.io/packages/helm/bitnami/postgresql) chart).
 
-   ```yaml
-   config:
-     MDMBOX_LICENSE: <your license string>
-     JAVA_OPTS: "-XX:MaxRAMPercentage=75"
-   ```
+Obtain an mdmbox [license](https://www.health-samurai.io/docs/aidbox/overview/aidbox-user-portal/licenses) from Health Samurai before installing.
 
-   For values that should not live in plain Helm values (secrets, tokens), put them in your own `ConfigMap`/`Secret` and reference them via `extraEnvFromConfigMaps` / `extraEnvFromSecrets`.
+### Common: license and mdmbox config
+
+mdmbox-specific environment variables (license, `JAVA_OPTS`, …) go under `config:`. The chart renders them into its own `ConfigMap` and mounts it via `envFrom`:
+
+```yaml
+config:
+  MDMBOX_LICENSE: <your license string>
+  JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+```
+
+Do not put database credentials in `config` — its values land in a plain `ConfigMap`. Use a `Secret` referenced via `extraEnvFromSecrets` instead.
+
+### Standalone
+
+Create a `Secret` with the database credentials (and optionally other `BOX_DB_*` values) and reference it via `extraEnvFromSecrets`. Non-secret `BOX_DB_*` values can live in `config`:
+
+```yaml
+config:
+  MDMBOX_LICENSE: <license JWT>
+  BOX_DB_HOST: postgres
+  BOX_DB_PORT: "5432"
+  BOX_DB_DATABASE: mdmbox
+
+extraEnvFromSecrets:
+  - mdmbox-db   # contains BOX_DB_USER, BOX_DB_PASSWORD
+```
+
+### Alongside Aidbox
+
+Reuse the `ConfigMap` and `Secret` your Aidbox already has — point the chart at them via `aidboxConfigMap` / `aidboxSecret`. They are loaded into the pod via `envFrom`:
+
+```yaml
+aidboxConfigMap: <ConfigMap with BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE>
+aidboxSecret: <Secret with BOX_DB_USER, BOX_DB_PASSWORD>
+
+config:
+  MDMBOX_LICENSE: <license JWT>
+```
+
+mdmbox and Aidbox then share the same PostgreSQL instance, FHIR data, and engine settings.
+
+### Install
 
 ```console
 helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
 
 helm upgrade --install mdmbox healthsamurai/mdmbox \
   --namespace mdmbox --create-namespace \
-  --values /path/to/config/file
+  --values /path/to/values.yaml
 ```
 
-It will install mdmbox in the `mdmbox` namespace, creating that namespace if it doesn't already exist.
+The release lands in the `mdmbox` namespace, creating it if needed.
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` |  |
-| aidboxConfigMap | string | `""` | Name of an existing ConfigMap with Aidbox env vars (e.g. BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE). Required. |
-| aidboxSecret | string | `""` | Name of an existing Secret with Aidbox credentials (e.g. BOX_DB_USER, BOX_DB_PASSWORD). Required. |
+| aidboxConfigMap | string | `""` | Name of an existing ConfigMap with BOX_DB_* env vars (e.g. BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE). Optional — convenience hook for the shared-Aidbox scenario where you already have an Aidbox ConfigMap. For standalone deployments leave empty and supply BOX_DB_* via .Values.config and/or extraEnvFromSecrets. |
+| aidboxSecret | string | `""` | Name of an existing Secret with BOX_DB_USER, BOX_DB_PASSWORD. Optional — same shared-Aidbox convenience as aidboxConfigMap. For standalone, use extraEnvFromSecrets to mount your own Secret. |
 | autoscaling.enabled | bool | `false` |  |
 | autoscaling.maxReplicas | int | `100` |  |
 | autoscaling.minReplicas | int | `1` |  |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
-| config | object | `{"JAVA_OPTS":"-XX:MaxRAMPercentage=75"}` | mdmbox config. All BOX_* env vars come from aidboxConfigMap/aidboxSecret; keep only mdmbox-specific vars here. MDMBOX_HTTP_PORT is injected from .Values.service.port in deployment.yaml (single source of truth). |
-| extraEnvFromConfigMaps | list | `[]` |  |
-| extraEnvFromSecrets | list | `[]` |  |
+| config | object | `{"JAVA_OPTS":"-XX:MaxRAMPercentage=75"}` | mdmbox config rendered into the chart's own ConfigMap. Holds mdmbox-specific env vars (license, JAVA_OPTS, …) and, in standalone mode, non-secret BOX_DB_* values (BOX_DB_HOST/PORT/DATABASE). Do NOT put credentials here — use extraEnvFromSecrets instead. MDMBOX_HTTP_PORT is injected from .Values.service.port in deployment.yaml (single source of truth). |
+| extraEnvFromConfigMaps | list | `[]` | Names of additional ConfigMaps loaded into the pod via envFrom. |
+| extraEnvFromSecrets | list | `[]` | Names of additional Secrets loaded into the pod via envFrom. Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode. |
 | fullnameOverride | string | `""` |  |
 | image.digest | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |

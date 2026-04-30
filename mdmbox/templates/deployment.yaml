@@ -48,10 +48,14 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "mdmbox.fullname" . }}
+            {{- with .Values.aidboxConfigMap }}
             - configMapRef:
-                name: {{ required "aidboxConfigMap is required — name of an existing ConfigMap with Aidbox env vars" .Values.aidboxConfigMap }}
+                name: {{ . }}
+            {{- end }}
+            {{- with .Values.aidboxSecret }}
             - secretRef:
-                name: {{ required "aidboxSecret is required — name of an existing Secret with Aidbox credentials" .Values.aidboxSecret }}
+                name: {{ . }}
+            {{- end }}
             {{- range .Values.extraEnvFromConfigMaps }}
             - configMapRef:
                 name: {{ . }}
