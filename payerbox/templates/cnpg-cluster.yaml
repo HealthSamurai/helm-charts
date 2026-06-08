@@ -1,0 +1,32 @@
+{{- if .Values.cnpg }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.cnpg.name }}
+  labels:
+    app.kubernetes.io/part-of: payerbox
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  instances: {{ .Values.cnpg.instances }}
+  storage:
+    size: {{ .Values.cnpg.storage.size }}
+    {{- with .Values.cnpg.storage.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+  {{- with .Values.cnpg.resources }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  bootstrap:
+    initdb:
+      # Primary database + owner role, using the predefined basic-auth secret so
+      # the password matches Aidbox's BOX_DB_PASSWORD (same external-store keys).
+      database: {{ .Values.cnpg.databases.primary }}
+      owner: {{ .Values.cnpg.owner }}
+      {{- with .Values.cnpg.credentialsSecret }}
+      secret:
+        name: {{ . }}
+      {{- end }}
+      postInitSQL:
+        - {{ printf "CREATE DATABASE %s OWNER %s;" .Values.cnpg.databases.secondary .Values.cnpg.owner | quote }}
+{{- end }}

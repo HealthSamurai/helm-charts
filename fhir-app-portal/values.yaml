@@ -1,0 +1,120 @@
+# =============================================================================
+# fhir-app-portal — Smartbox portal (admin + developer)
+# Single container, two HTTP ports: 8095 (admin) + 8096 (developer), 8081 backend.
+# Connects to BOTH Aidboxes: admin (8095) and sandbox (8096).
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+image:
+  repository: healthsamurai/fhir-app-portal
+  tag: "2605"
+  digest: ""          # if set, used instead of tag (repository@sha256:...)
+  pullPolicy: Always
+
+imagePullSecrets: []   # e.g. [ { name: artifact-registry-creds } ]
+
+ports:
+  - { name: portal, containerPort: 8095 }
+  - { name: dev-portal, containerPort: 8096 }
+  - { name: backend, containerPort: 8081 }
+
+probe:
+  path: /health
+  port: 8095
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+    add: [NET_BIND_SERVICE]
+
+podAnnotations: {}
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# ----- non-secret config -> ConfigMap, mounted via envFrom -----
+# In-cluster Aidbox service names assume admin/sandbox run in the same namespace
+# with fullnameOverride aidbox-admin / aidbox-sandbox (service <name>-api).
+config:
+  NODE_ENV: production
+  PORTAL_BACKEND_PORT: "8081"
+  DEPLOYMENT_MODE: prod
+  CORS_ORIGINS: "https://portal.example.com,https://portal-sandbox.example.com"
+  ADMIN_FRONTEND_URL: "https://portal.example.com"
+  DEVELOPER_FRONTEND_URL: "https://portal-sandbox.example.com"
+  AIDBOX_ADMIN_URL: "http://aidbox-admin-api"
+  AIDBOX_DEV_URL: "http://aidbox-sandbox-api"
+  AIDBOX_ADMIN_PUBLIC_URL: "https://aidbox.example.com"
+  ADMIN_AIDBOX_PUBLIC_URL: "https://aidbox.example.com"
+  AIDBOX_DEV_PUBLIC_URL: "https://aidbox-sandbox.example.com"
+  DEVELOPER_AIDBOX_PUBLIC_URL: "https://aidbox-sandbox.example.com"
+  AIDBOX_ADMIN_CLIENT_ID: smartbox-admin-portal
+  AIDBOX_DEV_CLIENT_ID: smartbox-developer-portal
+  ADMIN_API_CLIENT_ID: admin-api
+  DEVELOPER_API_CLIENT_ID: developer-api
+  APP_NAME: "FHIR Access Portal"
+
+# ----- secrets -> envFrom -----
+# mode: externalSecret (default) | existingSecret
+secrets:
+  mode: externalSecret
+  storeRef:
+    kind: ClusterSecretStore
+    name: gcp-store          # AWS: secrets-manager
+  refreshInterval: 1h
+  remoteKeyPrefix: ""        # e.g. "portal--prod--"
+  data:                      # secretKey: remoteRef.key (prefix is prepended)
+    SESSION_SECRET: fhir-app-portal--session-secret
+    ADMIN_API_CLIENT_SECRET: fhir-app-portal--admin-api-client-secret
+    DEVELOPER_API_CLIENT_SECRET: fhir-app-portal--developer-api-client-secret
+  existingSecretName: ""     # used only when mode=existingSecret
+
+service:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+    - { name: portal, port: 8095, targetPort: 8095 }
+    - { name: developer-portal, port: 8096, targetPort: 8096 }
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/upstream-vhost: "$host"
+    nginx.ingress.kubernetes.io/preserve-host: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/enable-gzip: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  tls:
+    - hosts:
+        - portal.example.com
+        - portal-sandbox.example.com
+      secretName: fhir-portal-tls
+  hosts:
+    - { host: portal.example.com, servicePort: 8095 }
+    - { host: portal-sandbox.example.com, servicePort: 8096 }

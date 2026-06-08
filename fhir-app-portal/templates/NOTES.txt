@@ -1,0 +1,16 @@
+{{ include "smartbox.fullname" . }} ({{ .Chart.Name }}) deployed.
+
+Image:   {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+Service: {{ include "smartbox.fullname" . }} ({{ .Values.service.type }})
+Secrets: mode={{ .Values.secrets.mode }}{{ if eq .Values.secrets.mode "externalSecret" }} (store {{ .Values.secrets.storeRef.name }}){{ else }} (existing secret {{ .Values.secrets.existingSecretName }}){{ end }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  - https://{{ .host }}  ->  {{ include "smartbox.fullname" $ }}:{{ .servicePort }}
+{{- end }}
+{{- else }}
+
+No ingress (ClusterIP-internal). In-cluster address: http://{{ include "smartbox.fullname" . }}:{{ (index .Values.service.ports 0).port }}
+{{- end }}

@@ -1,0 +1,197 @@
+# =============================================================================
+# payerbox — umbrella for the Smartbox payor + ePA stack.
+# Deploys (all in the release namespace): fhir-app-portal, interop, prior-auth,
+# two Aidbox instances (admin + sandbox), and one CloudNativePG cluster.
+#
+# Prerequisites in the cluster (NOT installed by this chart):
+#   - CloudNativePG operator
+#   - External Secrets Operator + a ClusterSecretStore (default name: gcp-store)
+#   - an ingress controller (nginx) + cert-manager
+# =============================================================================
+
+# Public hostnames (also referenced inside the subchart values below).
+global:
+  adminAidboxHost: aidbox.example.com
+  sandboxAidboxHost: aidbox-sandbox.example.com
+  portalHost: portal.example.com
+  portalSandboxHost: portal-sandbox.example.com
+  secretStore:
+    kind: ClusterSecretStore
+    name: gcp-store
+    remoteKeyPrefix: ""        # e.g. "payerbox--prod--"
+
+# -----------------------------------------------------------------------------
+# CloudNativePG — one Cluster, two databases (portal + sandbox).
+# CNPG generates the app-role secret "<cnpg.name>-app" (keys: username/password);
+# both Aidboxes read those creds via extraEnvs (see aidboxAdmin/Sandbox below).
+# -----------------------------------------------------------------------------
+cnpg:
+  name: payerbox-db
+  instances: 1
+  owner: aidbox
+  # Predefined owner credentials (basic-auth). Both CNPG and Aidbox read these:
+  # CNPG sets the role password from this secret; Aidbox gets BOX_DB_USER/PASSWORD
+  # from the same external-store keys (see dbCredentials + aidboxSecrets below).
+  credentialsSecret: payerbox-db-credentials
+  databases:
+    primary: portal
+    secondary: sandbox
+  storage:
+    size: 20Gi
+    storageClass: ""           # "" = cluster default
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+
+# DB credentials, sourced once from the external store. The basic-auth secret
+# feeds CNPG; the SAME external keys feed Aidbox's BOX_DB_USER/PASSWORD below.
+# The username VALUE in the store must equal cnpg.owner ("aidbox").
+dbCredentials:
+  enabled: true
+  secretName: payerbox-db-credentials
+  username: payerbox-db--username    # external-store key
+  password: payerbox-db--password    # external-store key
+
+# -----------------------------------------------------------------------------
+# Aidbox ADMIN (production data) — existing HS chart, unchanged.
+# fullnameOverride aidbox-admin  ->  in-cluster service aidbox-admin-api
+# -----------------------------------------------------------------------------
+aidboxAdmin:
+  enabled: true
+  fullnameOverride: aidbox-admin
+  protocol: https
+  host: aidbox.example.com
+  image:
+    tag: "2605"
+  config:
+    BOX_ID: aidbox-admin
+    BOX_INSTANCE_NAME: aidbox-admin
+    BOX_DB_HOST: payerbox-db-rw
+    BOX_DB_PORT: 5432
+    BOX_DB_DATABASE: portal
+    BOX_FHIR_COMPLIANT_MODE: true
+    BOX_FHIR_SCHEMA_VALIDATION: true
+    BOX_SECURITY_AUDIT_LOG_ENABLED: true
+    BOX_SETTINGS_MODE: read-write
+    BOX_INIT_BUNDLE: file:///init-bundle/init-bundle.json
+    JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+  # All secret env (DB creds, license, admin pwd, root + client secrets) come from
+  # the umbrella-owned aidbox-admin-env secret. envFrom-appended AFTER the chart's
+  # own config/secret, so these values win. Keep secrets OUT of .config above.
+  extraEnvFromSecrets:
+    - aidbox-admin-env
+  volumes:
+    - name: init-bundle
+      configMap:
+        name: aidbox-admin-init-bundle
+  volumeMounts:
+    - name: init-bundle
+      mountPath: /init-bundle
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+  serviceMonitor:
+    enabled: false
+  resources:
+    requests: { cpu: 500m, memory: 2Gi }
+    limits: { memory: 2Gi }
+
+# -----------------------------------------------------------------------------
+# Aidbox SANDBOX (developer/test data) — same chart, same DB role, db "sandbox".
+# fullnameOverride aidbox-sandbox  ->  in-cluster service aidbox-sandbox-api
+# -----------------------------------------------------------------------------
+aidboxSandbox:
+  enabled: true
+  fullnameOverride: aidbox-sandbox
+  protocol: https
+  host: aidbox-sandbox.example.com
+  image:
+    tag: "2605"
+  config:
+    BOX_ID: aidbox-sandbox
+    BOX_INSTANCE_NAME: aidbox-sandbox
+    BOX_DB_HOST: payerbox-db-rw
+    BOX_DB_PORT: 5432
+    BOX_DB_DATABASE: sandbox
+    BOX_FHIR_COMPLIANT_MODE: true
+    BOX_FHIR_SCHEMA_VALIDATION: true
+    BOX_SETTINGS_MODE: read-write
+    BOX_INIT_BUNDLE: file:///init-bundle/init-bundle.json
+    JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+  extraEnvFromSecrets:
+    - aidbox-sandbox-env
+  volumes:
+    - name: init-bundle
+      configMap:
+        name: aidbox-sandbox-init-bundle
+  volumeMounts:
+    - name: init-bundle
+      mountPath: /init-bundle
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+  serviceMonitor:
+    enabled: false
+  resources:
+    requests: { cpu: 250m, memory: 1Gi }
+    limits: { memory: 2Gi }
+
+# -----------------------------------------------------------------------------
+# Aidbox secrets (umbrella-owned ExternalSecrets feeding the two boxes).
+# Client secrets here MUST match the dedicated secrets the apps pull (interop /
+# prior-auth charts) — same remote keys -> consistent values.
+# -----------------------------------------------------------------------------
+aidboxSecrets:
+  enabled: true                 # set false to use existing secrets named aidbox-{admin,sandbox}-env
+  refreshInterval: 1h
+  admin:
+    BOX_LICENSE: aidbox-admin--box-license
+    BOX_ADMIN_PASSWORD: aidbox-admin--box-admin-password
+    BOX_ROOT_CLIENT_SECRET: aidbox-admin--box-root-client-secret
+    # DB creds — SAME external keys as dbCredentials so CNPG and Aidbox agree:
+    BOX_DB_USER: payerbox-db--username
+    BOX_DB_PASSWORD: payerbox-db--password
+    # client secrets referenced by the admin init-bundle (and by the apps):
+    ADMIN_API_CLIENT_SECRET: fhir-app-portal--admin-api-client-secret
+    INTEROP_APP_CLIENT_SECRET: interop--aidbox-client-secret
+    PRIOR_AUTH_APP_CLIENT_SECRET: prior-auth--aidbox-client-secret
+  sandbox:
+    BOX_LICENSE: aidbox-sandbox--box-license
+    BOX_ADMIN_PASSWORD: aidbox-sandbox--box-admin-password
+    BOX_ROOT_CLIENT_SECRET: aidbox-sandbox--box-root-client-secret
+    BOX_DB_USER: payerbox-db--username
+    BOX_DB_PASSWORD: payerbox-db--password
+    DEVELOPER_API_CLIENT_SECRET: fhir-app-portal--developer-api-client-secret
+
+# -----------------------------------------------------------------------------
+# App subcharts. Values here override each app chart's defaults; the in-cluster
+# Aidbox service names (aidbox-admin-api / aidbox-sandbox-api) are stable.
+# -----------------------------------------------------------------------------
+fhir-app-portal:
+  enabled: true
+  config:
+    CORS_ORIGINS: "https://portal.example.com,https://portal-sandbox.example.com"
+    ADMIN_FRONTEND_URL: "https://portal.example.com"
+    DEVELOPER_FRONTEND_URL: "https://portal-sandbox.example.com"
+    AIDBOX_ADMIN_URL: "http://aidbox-admin-api"
+    AIDBOX_DEV_URL: "http://aidbox-sandbox-api"
+    AIDBOX_ADMIN_PUBLIC_URL: "https://aidbox.example.com"
+    ADMIN_AIDBOX_PUBLIC_URL: "https://aidbox.example.com"
+    AIDBOX_DEV_PUBLIC_URL: "https://aidbox-sandbox.example.com"
+    DEVELOPER_AIDBOX_PUBLIC_URL: "https://aidbox-sandbox.example.com"
+
+interop:
+  enabled: true
+  config:
+    AIDBOX_URL: "http://aidbox-admin-api"
+    AIDBOX_PUBLIC_URL: "https://aidbox.example.com"
+
+prior-auth:
+  enabled: true
+  config:
+    AIDBOX_URL: "http://aidbox-admin-api"

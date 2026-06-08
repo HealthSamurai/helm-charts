@@ -1,0 +1,37 @@
+apiVersion: v2
+name: payerbox
+description: >-
+  Umbrella chart for the Smartbox payor + ePA stack — fhir-app-portal, interop,
+  prior-auth and two Aidbox instances (admin + sandbox) backed by CloudNativePG.
+type: application
+version: 0.1.0
+appVersion: "2605"
+home: https://www.health-samurai.io
+maintainers:
+  - name: Health Samurai
+
+dependencies:
+  # Aidbox is the existing HS chart, used UNCHANGED, twice (admin + sandbox).
+  - name: aidbox
+    alias: aidboxAdmin
+    version: 0.2.8
+    repository: https://aidbox.github.io/helm-charts
+    condition: aidboxAdmin.enabled
+  - name: aidbox
+    alias: aidboxSandbox
+    version: 0.2.8
+    repository: https://aidbox.github.io/helm-charts
+    condition: aidboxSandbox.enabled
+  # The three Smartbox app charts, published to the same HS Helm repo as this umbrella.
+  - name: fhir-app-portal
+    version: 0.1.0
+    repository: https://healthsamurai.github.io/helm-charts
+    condition: fhir-app-portal.enabled
+  - name: interop
+    version: 0.1.0
+    repository: https://healthsamurai.github.io/helm-charts
+    condition: interop.enabled
+  - name: prior-auth
+    version: 0.1.0
+    repository: https://healthsamurai.github.io/helm-charts
+    condition: prior-auth.enabled

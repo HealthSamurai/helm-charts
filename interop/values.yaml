@@ -1,0 +1,73 @@
+# =============================================================================
+# interop — ePA interop service. ClusterIP-internal (no ingress).
+# Connects to the ADMIN Aidbox only.
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+image:
+  repository: healthsamurai/interop
+  tag: "2605"
+  digest: ""
+  pullPolicy: Always
+
+imagePullSecrets: []
+
+ports:
+  - { name: http, containerPort: 8088 }
+
+probe:
+  path: /health
+  port: 8088
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+podAnnotations: {}
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# ----- non-secret config -> ConfigMap, mounted via envFrom -----
+config:
+  AIDBOX_URL: "http://aidbox-admin-api"        # admin Aidbox, in-cluster
+  AIDBOX_PUBLIC_URL: "https://aidbox.example.com"
+  AIDBOX_CLIENT_ID: interop-app
+  AIDBOX_APP_ID: interop-app
+  AIDBOX_APP_PORT: "8088"
+  INTEROP_APP_URL: "http://interop:8088/"
+
+# ----- secrets -> envFrom -----
+secrets:
+  mode: externalSecret
+  storeRef:
+    kind: ClusterSecretStore
+    name: gcp-store
+  refreshInterval: 1h
+  remoteKeyPrefix: ""
+  data:                          # dedicated client secret — NOT shared with other apps
+    AIDBOX_CLIENT_SECRET: interop--aidbox-client-secret
+    AIDBOX_APP_SECRET: interop--aidbox-app-secret
+  existingSecretName: ""
+
+service:
+  type: ClusterIP
+  sessionAffinity: null
+  ports:
+    - { name: http, port: 8088, targetPort: 8088 }
+
+ingress:
+  enabled: false
