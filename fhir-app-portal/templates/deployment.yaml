@@ -51,23 +51,30 @@ spec:
                 name: {{ include "smartbox.fullname" . }}-config
             - secretRef:
                 name: {{ include "smartbox.secretName" . }}
-          {{- with .Values.probe }}
+          {{- $probe := .Values.probe }}
+          {{- with $probe.startup }}
+          startupProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: {{ $probe.port }}
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $probe.liveness }}
           livenessProbe:
             httpGet:
-              path: {{ .path }}
-              port: {{ .port }}
-              scheme: {{ .scheme | default "HTTP" }}
-            {{- with .liveness }}
+              path: {{ $probe.path }}
+              port: {{ $probe.port }}
+              scheme: {{ $probe.scheme | default "HTTP" }}
             {{- toYaml . | nindent 12 }}
-            {{- end }}
+          {{- end }}
+          {{- with $probe.readiness }}
           readinessProbe:
             httpGet:
-              path: {{ .path }}
-              port: {{ .port }}
-              scheme: {{ .scheme | default "HTTP" }}
-            {{- with .readiness }}
+              path: {{ $probe.path }}
+              port: {{ $probe.port }}
+              scheme: {{ $probe.scheme | default "HTTP" }}
             {{- toYaml . | nindent 12 }}
-            {{- end }}
           {{- end }}
           {{- with .Values.resources }}
           resources:

@@ -22,6 +22,12 @@ probe:
   path: /health
   port: 8092
   scheme: HTTP
+  # startupProbe gates liveness/readiness until the app has booted
+  # (here: up to failureThreshold*periodSeconds = 30*10 = 300s).
+  startup:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
   liveness:
     initialDelaySeconds: 30
     periodSeconds: 10
@@ -47,9 +53,12 @@ resources:
     memory: 512Mi
 
 securityContext:
+  privileged: false
   allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
   capabilities:
-    drop: [ALL]
+    drop: ["ALL"]
 
 podAnnotations: {}
 
