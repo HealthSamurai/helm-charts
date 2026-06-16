@@ -13,12 +13,12 @@ dependencies:
 - name: aidbox
   alias: aidbox-admin
   version: 0.2.11
-  repository: https://healthsamurai.github.io/helm-charts/
+  repository: file://../aidbox
   condition: aidbox-admin.enabled
 - name: aidbox
   alias: aidbox-sandbox
   version: 0.2.11
-  repository: https://healthsamurai.github.io/helm-charts/
+  repository: file://../aidbox
   condition: aidbox-sandbox.enabled
 - name: fhir-app-portal
   version: 0.1.0
