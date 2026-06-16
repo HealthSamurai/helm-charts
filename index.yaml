@@ -60,6 +60,36 @@ entries:
     urls:
     - auditbox-0.1.12.tgz
     version: 0.1.12
+  fhir-app-portal:
+  - apiVersion: v2
+    appVersion: "2605"
+    created: "2026-06-16T08:59:43.818671064Z"
+    description: Smartbox FHIR App Portal — serves the Admin and Developer portals
+      from a single image (two ports)
+    digest: b9288dd9ad669d461aa20d095baa71bf5cf13a2fdc05a29b9df27c1ac672eddf
+    home: https://www.health-samurai.io
+    maintainers:
+    - name: Health Samurai
+    name: fhir-app-portal
+    type: application
+    urls:
+    - fhir-app-portal-0.1.0.tgz
+    version: 0.1.0
+  interop:
+  - apiVersion: v2
+    appVersion: "2605"
+    created: "2026-06-16T08:59:44.051436728Z"
+    description: Smartbox ePA Interop service (CMS-0057 patient- & provider-access
+      FHIR APIs)
+    digest: 68a9263307a771adbbb9136beeb591e2ea435c9d87bbc9375b23037cae306c2e
+    home: https://www.health-samurai.io
+    maintainers:
+    - name: Health Samurai
+    name: interop
+    type: application
+    urls:
+    - interop-0.1.0.tgz
+    version: 0.1.0
   mdm:
   - apiVersion: v2
     created: "2026-01-16T09:12:31.292830219Z"
@@ -102,6 +132,44 @@ entries:
     urls:
     - mpi-0.1.0.tgz
     version: 0.1.0
+  payerbox:
+  - apiVersion: v2
+    appVersion: "2605"
+    created: "2026-06-16T08:59:44.576787366Z"
+    dependencies:
+    - alias: aidbox-admin
+      condition: aidbox-admin.enabled
+      name: aidbox
+      repository: https://healthsamurai.github.io/helm-charts
+      version: 0.2.11
+    - alias: aidbox-sandbox
+      condition: aidbox-sandbox.enabled
+      name: aidbox
+      repository: https://healthsamurai.github.io/helm-charts
+      version: 0.2.11
+    - condition: fhir-app-portal.enabled
+      name: fhir-app-portal
+      repository: file://../fhir-app-portal
+      version: 0.1.0
+    - condition: interop.enabled
+      name: interop
+      repository: file://../interop
+      version: 0.1.0
+    - condition: prior-auth.enabled
+      name: prior-auth
+      repository: file://../prior-auth
+      version: 0.1.0
+    description: Umbrella chart for the Smartbox payor + ePA stack — fhir-app-portal,
+      interop, prior-auth and two Aidbox instances (admin + sandbox) backed by CloudNativePG.
+    digest: f0a0852e321fd2c4d2346aee61ff0ac82b83f47da424dc741ed6fe00564fe61a
+    home: https://www.health-samurai.io
+    maintainers:
+    - name: Health Samurai
+    name: payerbox
+    type: application
+    urls:
+    - payerbox-0.1.0.tgz
+    version: 0.1.0
   postgres:
   - apiVersion: v2
     appVersion: "18"
@@ -133,4 +201,18 @@ entries:
     urls:
     - postgres-0.0.1.tgz
     version: 0.0.1
-generated: "2026-04-28T10:03:08.497075282Z"
+  prior-auth:
+  - apiVersion: v2
+    appVersion: "2605"
+    created: "2026-06-16T08:59:44.85331314Z"
+    description: Smartbox ePA Prior-Authorization service (Da Vinci PAS)
+    digest: b2bb5ddf871149a87e64c2113a78e7dd276e35b12607c8ffb326789a510d279d
+    home: https://www.health-samurai.io
+    maintainers:
+    - name: Health Samurai
+    name: prior-auth
+    type: application
+    urls:
+    - prior-auth-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-06-16T08:59:44.853324622Z"
