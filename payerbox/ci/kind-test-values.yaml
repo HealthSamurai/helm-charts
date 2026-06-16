@@ -1,0 +1,38 @@
+# Overrides for the local kind manual test (see ../MANUAL_TEST.md).
+# Ingress disabled (no controller/DNS), resources shrunk to fit a small Docker VM.
+# Secrets + CNPG are created by hand in the runbook (not by the chart).
+
+aidbox-admin:
+  ingress:
+    enabled: false
+  config:
+    JAVA_OPTS: "-XX:MaxRAMPercentage=60"
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+aidbox-sandbox:
+  ingress:
+    enabled: false
+  config:
+    JAVA_OPTS: "-XX:MaxRAMPercentage=60"
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits: { memory: 896Mi }
+
+fhir-app-portal:
+  ingress:
+    enabled: false
+  resources:
+    requests: { cpu: 10m, memory: 128Mi }
+    limits: { memory: 384Mi }
+
+interop:
+  resources:
+    requests: { cpu: 10m, memory: 96Mi }
+    limits: { memory: 256Mi }
+
+prior-auth:
+  resources:
+    requests: { cpu: 10m, memory: 96Mi }
+    limits: { memory: 256Mi }

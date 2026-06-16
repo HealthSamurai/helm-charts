@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartbox.fullname" . }}
+  labels:
+    {{- include "smartbox.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "smartbox.selectorLabels" . | nindent 6 }}
+  {{- with .Values.strategy }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .maxSurge }}
+      maxUnavailable: {{ .maxUnavailable }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartbox.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if include "smartbox.serviceAccountName" . }}
+      serviceAccountName: {{ include "smartbox.serviceAccountName" . }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- if .Values.image.digest }}
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          {{- else }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8088
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "smartbox.fullname" . }}-config
+            - secretRef:
+                name: {{ include "smartbox.secretName" . }}
+          {{- $probe := .Values.probe }}
+          {{- with $probe.startup }}
+          startupProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: 8088
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $probe.liveness }}
+          livenessProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: 8088
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $probe.readiness }}
+          readinessProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: 8088
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}

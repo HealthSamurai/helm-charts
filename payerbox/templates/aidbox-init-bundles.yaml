@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aidbox-admin-init-bundle
+  labels:
+    app.kubernetes.io/part-of: payerbox
+data:
+  init-bundle.json: |
+{{ .Files.Get "files/aidbox-admin-init-bundle.json" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aidbox-sandbox-init-bundle
+  labels:
+    app.kubernetes.io/part-of: payerbox
+data:
+  init-bundle.json: |
+{{ .Files.Get "files/aidbox-sandbox-init-bundle.json" | indent 4 }}

@@ -1,0 +1,70 @@
+{{- /*
+  Gateway API routes, modeled on the Grafana chart's route.yaml. Renders one route
+  per enabled entry in .Values.route. Routes attach to an EXISTING parent Gateway
+  (parentRefs); the chart does NOT create the Gateway, and TLS/policies live there.
+
+  backendRefs need a port NUMBER, so backendPortName is mapped to the hardcoded
+  Service port number here (ports are fixed by the image, kept out of values).
+*/}}
+{{- $portMap := dict "http" 8088 }}
+{{- range $name, $route := .Values.route }}
+{{- if $route.enabled }}
+---
+apiVersion: {{ $route.apiVersion | default "gateway.networking.k8s.io/v1" }}
+kind: {{ $route.kind | default "HTTPRoute" }}
+metadata:
+  {{- with $route.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  name: {{ include "smartbox.fullname" $ }}{{ if ne $name "main" }}-{{ $name }}{{ end }}
+  labels:
+    {{- include "smartbox.labels" $ | nindent 4 }}
+    {{- with $route.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- with $route.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $route.hostnames }}
+  hostnames:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- with $route.additionalRules }}
+    {{- tpl (toYaml .) $ | nindent 4 }}
+    {{- end }}
+    {{- if $route.httpsRedirect }}
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+    {{- else }}
+    - backendRefs:
+        - name: {{ include "smartbox.fullname" $ }}
+          port: {{ index $portMap ($route.backendPortName | default "http") }}
+          group: ''
+          kind: Service
+          weight: 1
+      {{- with $route.filters }}
+      filters:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $route.matches }}
+      matches:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $route.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $route.sessionPersistence }}
+      sessionPersistence:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

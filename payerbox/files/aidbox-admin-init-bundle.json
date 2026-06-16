@@ -1,0 +1,43 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "_note": "STARTER admin init-bundle for payerbox. Registers the OAuth clients the apps use. Client secrets use ${ENV} placeholders fed from the aidbox-admin-env secret — the secret-injection mechanism (Aidbox-native vs an envsubst initContainer) MUST be validated against a real Aidbox before production use. See payerbox/README.md.",
+  "entry": [
+    {
+      "request": { "method": "PUT", "url": "/Client/smartbox-admin-portal" },
+      "resource": {
+        "resourceType": "Client",
+        "id": "smartbox-admin-portal",
+        "type": "smart-app",
+        "grant_types": ["authorization_code"]
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "/Client/admin-api" },
+      "resource": {
+        "resourceType": "Client",
+        "id": "admin-api",
+        "secret": "${ADMIN_API_CLIENT_SECRET}",
+        "grant_types": ["client_credentials"]
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "/Client/interop-app" },
+      "resource": {
+        "resourceType": "Client",
+        "id": "interop-app",
+        "secret": "${INTEROP_APP_CLIENT_SECRET}",
+        "grant_types": ["client_credentials", "basic"]
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "/Client/prior-auth-app" },
+      "resource": {
+        "resourceType": "Client",
+        "id": "prior-auth-app",
+        "secret": "${PRIOR_AUTH_APP_CLIENT_SECRET}",
+        "grant_types": ["client_credentials", "basic"]
+      }
+    }
+  ]
+}

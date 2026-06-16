@@ -1,0 +1,35 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "_note": "STARTER sandbox init-bundle for payerbox. Registers the developer-portal clients and a TokenIntrospector trusting the admin Aidbox JWT (cross-instance auth). Secret injection + the iss/jwks_uri host MUST be validated against a real Aidbox before production. See payerbox/README.md.",
+  "entry": [
+    {
+      "request": { "method": "PUT", "url": "/Client/smartbox-developer-portal" },
+      "resource": {
+        "resourceType": "Client",
+        "id": "smartbox-developer-portal",
+        "type": "smart-app",
+        "grant_types": ["authorization_code"]
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "/Client/developer-api" },
+      "resource": {
+        "resourceType": "Client",
+        "id": "developer-api",
+        "secret": "${DEVELOPER_API_CLIENT_SECRET}",
+        "grant_types": ["client_credentials"]
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "/TokenIntrospector/admin-aidbox" },
+      "resource": {
+        "resourceType": "TokenIntrospector",
+        "id": "admin-aidbox",
+        "type": "jwt",
+        "jwt": { "iss": "https://aidbox.example.com" },
+        "jwks_uri": "https://aidbox.example.com/.well-known/jwks.json"
+      }
+    }
+  ]
+}

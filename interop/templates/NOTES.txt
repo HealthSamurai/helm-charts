@@ -1,0 +1,28 @@
+{{ include "smartbox.fullname" . }} ({{ .Chart.Name }}) deployed.
+
+Image:   {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+Service: {{ include "smartbox.fullname" . }} ({{ .Values.service.type }})
+Secrets: envFrom existing Secret "{{ include "smartbox.secretName" . }}" (must be provisioned separately — see PREREQUISITES.md)
+{{- $exposed := false }}
+{{- range $name, $route := .Values.route }}
+{{- if $route.enabled }}
+{{- $exposed = true }}
+
+Gateway route "{{ $name }}"{{ with $route.parentRefs }} -> parent {{ (index . 0).name }}{{ end }}:
+{{- range $route.hostnames }}
+  - https://{{ . }}  ->  {{ include "smartbox.fullname" $ }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+{{- $exposed = true }}
+
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  - https://{{ .host }}  ->  {{ include "smartbox.fullname" $ }} (port {{ .servicePortName }})
+{{- end }}
+{{- end }}
+{{- if not $exposed }}
+
+No external routing (ClusterIP-internal). In-cluster address: http://{{ include "smartbox.fullname" . }}:8088
+{{- end }}

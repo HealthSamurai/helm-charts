@@ -1,0 +1,103 @@
+# prior-auth — ePA prior-authorization service. ClusterIP-internal; connects to the admin Aidbox.
+
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+image:
+  repository: healthsamurai/prior-auth
+  tag: "" # defaults to Chart.appVersion
+  digest: ""
+  pullPolicy: Always
+
+imagePullSecrets: []
+
+probe:
+  path: /health
+  scheme: HTTP
+  # startup gates liveness/readiness until booted (~5min max here)
+  startup:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0
+terminationGracePeriodSeconds: 30
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+securityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: [ "ALL" ]
+
+podAnnotations: {}
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# Non-secret config -> ConfigMap (envFrom).
+config:
+  AIDBOX_URL: "http://aidbox-admin-api" # admin Aidbox, in-cluster
+  AIDBOX_CLIENT_ID: prior-auth-app
+  AIDBOX_APP_PORT: "8092"
+  PRIOR_AUTH_APP_URL: "http://prior-auth:8092/"
+
+secrets:
+  # Existing Secret (NOT created here — see PREREQUISITES.md); defaults to <release>-secrets.
+  # Required keys: AIDBOX_CLIENT_SECRET, AIDBOX_APP_SECRET (dedicated, not shared)
+  existingSecretName: ""
+
+service:
+  type: ClusterIP
+  sessionAffinity: null
+
+# Gateway API routes. prior-auth is ClusterIP-internal by default; enable a route (with
+# parentRefs + hostnames) only to expose it via a Gateway. "main" key = no name suffix.
+route:
+  main:
+    enabled: false
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    annotations: {}
+    labels: {}
+    parentRefs: []
+    # - name: main-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+    hostnames: []
+    # - prior-auth.example.com
+    backendPortName: http
+    matches:
+    - path: { type: PathPrefix, value: / }
+    filters: []
+    timeouts: {}
+    sessionPersistence: {}
+    additionalRules: []
+    httpsRedirect: false
+
+# nginx Ingress: alternative to the routes above; disabled by default.
+ingress:
+  enabled: false

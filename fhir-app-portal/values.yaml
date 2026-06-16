@@ -1,0 +1,151 @@
+# fhir-app-portal — Smartbox admin + developer portal (single image).
+# Ports 8095 (admin) + 8096 (developer) + 8081 backend; connects to both Aidboxes.
+
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+image:
+  repository: healthsamurai/fhir-app-portal
+  tag: "" # defaults to Chart.appVersion
+  digest: "" # overrides tag if set (repository@sha256:...)
+  pullPolicy: Always
+
+imagePullSecrets: [] # e.g. [ { name: artifact-registry-creds } ]
+
+probe:
+  path: /health
+  scheme: HTTP
+  # startup gates liveness/readiness until booted (~5min max here)
+  startup:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0
+terminationGracePeriodSeconds: 30
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+securityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: [ "ALL" ]
+
+podAnnotations: {}
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# Non-secret config -> ConfigMap (envFrom). Aidbox svc names assume same namespace.
+config:
+  NODE_ENV: production
+  PORTAL_BACKEND_PORT: "8081"
+  DEPLOYMENT_MODE: prod
+  CORS_ORIGINS: "https://portal.example.com,https://portal-sandbox.example.com"
+  ADMIN_FRONTEND_URL: "https://portal.example.com"
+  DEVELOPER_FRONTEND_URL: "https://portal-sandbox.example.com"
+  AIDBOX_ADMIN_URL: "http://aidbox-admin-api"
+  AIDBOX_DEV_URL: "http://aidbox-sandbox-api"
+  AIDBOX_ADMIN_PUBLIC_URL: "https://aidbox.example.com"
+  ADMIN_AIDBOX_PUBLIC_URL: "https://aidbox.example.com"
+  AIDBOX_DEV_PUBLIC_URL: "https://aidbox-sandbox.example.com"
+  DEVELOPER_AIDBOX_PUBLIC_URL: "https://aidbox-sandbox.example.com"
+  AIDBOX_ADMIN_CLIENT_ID: smartbox-admin-portal
+  AIDBOX_DEV_CLIENT_ID: smartbox-developer-portal
+  ADMIN_API_CLIENT_ID: admin-api
+  DEVELOPER_API_CLIENT_ID: developer-api
+  APP_NAME: "FHIR Access Portal"
+
+secrets:
+  # Existing Secret (NOT created here — see PREREQUISITES.md); defaults to <release>-secrets.
+  # Required keys: SESSION_SECRET, ADMIN_API_CLIENT_SECRET, DEVELOPER_API_CLIENT_SECRET
+  existingSecretName: ""
+
+service:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+# Hostnames served — single source of truth for routes (via tpl) AND ingress.
+portalHost: portal.example.com
+sandboxHost: portal-sandbox.example.com
+tlsSecretName: fhir-portal-tls # used by the nginx Ingress only
+
+# Gateway API routes (default external exposure). Map of HTTPRoutes attached to an
+# EXISTING parent Gateway (parentRefs). For nginx Ingress instead, see ingress below.
+route:
+  portal:
+    enabled: true
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    annotations: {}
+    labels: {}
+    parentRefs:
+    - name: main-gateway # override per environment
+      # namespace: gateway-system
+      # sectionName: https
+    hostnames:
+    - '{{ .Values.portalHost }}'
+    backendPortName: portal
+    matches:
+    - path: { type: PathPrefix, value: / }
+    filters: []
+    timeouts: {}
+    sessionPersistence: {}
+    additionalRules: []
+    httpsRedirect: false
+  dev-portal:
+    enabled: true
+    parentRefs:
+    - name: main-gateway
+    hostnames:
+    - '{{ .Values.sandboxHost }}'
+    backendPortName: dev-portal
+    matches:
+    - path: { type: PathPrefix, value: / }
+
+# nginx Ingress: alternative to the routes above; disabled by default.
+# Hosts + TLS are built from portalHost/sandboxHost/tlsSecretName in templates/ingress.yaml.
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/upstream-vhost: "$host"
+    nginx.ingress.kubernetes.io/preserve-host: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/enable-gzip: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
