@@ -1,0 +1,18 @@
+dependencies:
+- name: aidbox
+  repository: https://healthsamurai.github.io/helm-charts/
+  version: 0.2.11
+- name: aidbox
+  repository: https://healthsamurai.github.io/helm-charts/
+  version: 0.2.11
+- name: fhir-app-portal
+  repository: file://../fhir-app-portal
+  version: 0.1.0
+- name: interop
+  repository: file://../interop
+  version: 0.1.0
+- name: prior-auth
+  repository: file://../prior-auth
+  version: 0.1.0
+digest: sha256:bd02631d4b6bff934c20a7945e79defce2df819349a7cb0fd586cf42682b2d3a
+generated: "2026-06-16T11:15:19.964864+04:00"

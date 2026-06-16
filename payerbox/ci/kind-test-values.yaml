@@ -21,6 +21,9 @@ aidbox-sandbox:
     limits: { memory: 896Mi }
 
 fhir-app-portal:
+  route:
+    portal: { enabled: false }
+    dev-portal: { enabled: false }
   ingress:
     enabled: false
   resources:

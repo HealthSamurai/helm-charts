@@ -1,39 +1,34 @@
 apiVersion: v2
 name: payerbox
 description: >-
-  Umbrella chart for the Smartbox payor + ePA stack — fhir-app-portal, interop,
-  prior-auth and two Aidbox instances (admin + sandbox) backed by CloudNativePG.
+  Umbrella chart for the Smartbox payor + ePA stack — fhir-app-portal, interop, prior-auth and two Aidbox instances (admin + sandbox) backed by CloudNativePG.
 type: application
 version: 0.1.0
 appVersion: "2605"
 home: https://www.health-samurai.io
 maintainers:
-  - name: Health Samurai
+- name: Health Samurai
 
 dependencies:
-  # Aidbox is the existing HS chart, used UNCHANGED, twice (admin + sandbox).
-  # Aliases MUST be RFC1123 (lowercase/hyphen): the aidbox chart uses .Chart.Name
-  # (= the alias) as the container name, so camelCase aliases are rejected by the API.
-  - name: aidbox
-    alias: aidbox-admin
-    version: 0.2.8
-    repository: https://aidbox.github.io/helm-charts
-    condition: aidbox-admin.enabled
-  - name: aidbox
-    alias: aidbox-sandbox
-    version: 0.2.8
-    repository: https://aidbox.github.io/helm-charts
-    condition: aidbox-sandbox.enabled
-  # The three Smartbox app charts, published to the same HS Helm repo as this umbrella.
-  - name: fhir-app-portal
-    version: 0.1.0
-    repository: https://healthsamurai.github.io/helm-charts
-    condition: fhir-app-portal.enabled
-  - name: interop
-    version: 0.1.0
-    repository: https://healthsamurai.github.io/helm-charts
-    condition: interop.enabled
-  - name: prior-auth
-    version: 0.1.0
-    repository: https://healthsamurai.github.io/helm-charts
-    condition: prior-auth.enabled
+- name: aidbox
+  alias: aidbox-admin
+  version: 0.2.11
+  repository: https://healthsamurai.github.io/helm-charts/
+  condition: aidbox-admin.enabled
+- name: aidbox
+  alias: aidbox-sandbox
+  version: 0.2.11
+  repository: https://healthsamurai.github.io/helm-charts/
+  condition: aidbox-sandbox.enabled
+- name: fhir-app-portal
+  version: 0.1.0
+  repository: file://../fhir-app-portal
+  condition: fhir-app-portal.enabled
+- name: interop
+  version: 0.1.0
+  repository: file://../interop
+  condition: interop.enabled
+- name: prior-auth
+  version: 0.1.0
+  repository: file://../prior-auth
+  condition: prior-auth.enabled
