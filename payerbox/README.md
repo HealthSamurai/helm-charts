@@ -68,4 +68,5 @@ real Aidbox (per the repo rule "verify against a real local Aidbox, don't guess"
    are not yet included — port them from the existing customer init-bundles.
 3. **Sandbox `TokenIntrospector`** `iss`/`jwks_uri` must point at the real admin Aidbox host.
 
-This is the next task (Phase 4 / ePA-demo test) in `../smartbox/IMPLEMENTATION_PLAN.md`.
+These (the "Phase 4 / ePA-demo" work) are the remaining task before the umbrella can
+fully authenticate the apps to Aidbox end-to-end.
