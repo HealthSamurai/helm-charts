@@ -89,6 +89,7 @@ service:
 nameOverride: ""
 fullnameOverride: ""
 
+deploymentAnnotations: {}
 podAnnotations: {}
 podLabels: {}
 
@@ -130,4 +131,3 @@ auditbox:
     path: ""
     secret: ""
     existingSecretName: ""
-
