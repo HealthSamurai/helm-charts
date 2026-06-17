@@ -3,6 +3,18 @@ entries:
   aidbox:
   - apiVersion: v2
     appVersion: edge
+    created: "2026-06-17T10:39:48.063583399Z"
+    description: Aidbox is FHIR backend platform by Health Samurai
+    digest: 9b093ca50cde41cf19e0f68f9ca510c29dfdba33724944fae7fb880a8f87459b
+    home: https://www.health-samurai.io/fhir-server
+    icon: https://healthsamurai.github.io/helm-charts/aidbox.png?1766480680
+    name: aidbox
+    type: application
+    urls:
+    - aidbox-0.2.12.tgz
+    version: 0.2.12
+  - apiVersion: v2
+    appVersion: edge
     created: "2026-03-23T11:17:39.404325074Z"
     description: Aidbox is FHIR backend platform by Health Samurai
     digest: 27b4ff859ed11605a95f76463f88db60e4d7ec9c7cf1985da957b325a46c5ce8
@@ -215,4 +227,4 @@ entries:
     urls:
     - prior-auth-0.1.0.tgz
     version: 0.1.0
-generated: "2026-06-16T08:59:44.853324622Z"
+generated: "2026-06-17T10:39:48.282029367Z"
