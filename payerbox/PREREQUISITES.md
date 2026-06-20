@@ -181,9 +181,11 @@ spec:
 
 ---
 
-## 4. Still TODO in the chart (separate from these prerequisites)
+## 4. Init-bundle substitution (handled by the chart)
 
-The Aidbox **init-bundles** (`files/aidbox-*-init-bundle.json`) are starter content. Their
-OAuth-client secrets use `${ENV}` placeholders that Aidbox does **not** substitute in a mounted
-bundle — this needs an `initContainer` (envsubst) step and finalized bundle content, validated
-against a live Aidbox. See `payerbox/README.md`.
+The Aidbox **init-bundles** (`files/aidbox-*-init-bundle.json`) ship as `${VAR}` templates. Aidbox
+does **not** substitute env vars in a mounted bundle, so each Aidbox pod runs a small `sed`
+initContainer (`busybox`) that fills the placeholders — hostnames from `aidbox-*.config` and
+client secrets from the `aidbox-*-env` Secret — before Aidbox loads the bundle. It re-renders on
+every pod start, so it survives `helm upgrade`. No action needed beyond setting the values in §3
+and the host config. See `README.md`.

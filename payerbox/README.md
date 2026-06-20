@@ -67,8 +67,7 @@ fhir-app-portal:
 ```
 
 > A complete, end-to-end walkthrough (PostgreSQL, Secrets, DNS/TLS, verification) is in the
-> Payerbox documentation under **Run Payerbox → Deploy**. A fully isolated local kind smoke test
-> is in [MANUAL_TEST.md](./MANUAL_TEST.md).
+> Payerbox documentation under **Run Payerbox → Deploy**.
 
 ## Routing & TLS
 
@@ -91,14 +90,14 @@ Each component chooses **nginx Ingress** or **Gateway API** independently:
 Each Aidbox instance loads a starter **init bundle** (`files/aidbox-*-init-bundle.json`) that
 registers the OAuth clients, the cross-instance `TokenIntrospector`, search parameters, and
 access policies. Aidbox loads init bundles **as-is** (no native env substitution), so the chart
-ships them as `${VAR}` templates and renders them with an **`envsubst` initContainer** on each
-Aidbox pod:
+ships them as `${VAR}` templates and renders them with a small **`sed` initContainer** (`busybox`)
+on each Aidbox pod:
 
 - **Non-secret values** (hostnames, the in-cluster admin URL) come from `aidbox-*.config`
   (i.e. your `values.yaml`).
 - **Secret values** (client secrets) come from the `aidbox-*-env` Secret via `secretKeyRef` —
   they are never written into a ConfigMap.
-- `envsubst` runs with a **restricted variable list**, so Aidbox matcho operators (`$one-of`,
+- `sed` replaces only the exact `${VAR}` placeholders, so Aidbox matcho operators (`$one-of`,
   `$sql`, …) inside the bundle are left untouched.
 
 Because rendering happens at every pod start, config changes take effect on the next rollout and
