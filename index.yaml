@@ -87,6 +87,28 @@ entries:
     urls:
     - fhir-app-portal-0.1.0.tgz
     version: 0.1.0
+  interbox:
+  - apiVersion: v2
+    appVersion: edge
+    created: "2026-07-07T15:47:48.579649079Z"
+    description: Integration Engine for Modern Healthcare Solutions
+    digest: 59f8e84a0149a3d471624ced6ce728a6063a763baeb28aedfcd301ea1dee25c0
+    home: https://www.health-samurai.io/interbox
+    icon: https://raw.githubusercontent.com/HealthSamurai/helm-charts/main/interbox/icon.png
+    keywords:
+    - hl7
+    - hl7v2
+    - fhir
+    - mllp
+    - integration
+    - interbox
+    maintainers:
+    - name: Health Samurai
+    name: interbox
+    type: application
+    urls:
+    - interbox-0.1.0.tgz
+    version: 0.1.0
   interop:
   - apiVersion: v2
     appVersion: "2605"
@@ -227,4 +249,4 @@ entries:
     urls:
     - prior-auth-0.1.0.tgz
     version: 0.1.0
-generated: "2026-06-17T10:39:48.282029367Z"
+generated: "2026-07-07T15:47:48.805278913Z"
