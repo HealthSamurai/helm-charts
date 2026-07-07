@@ -1,0 +1,21 @@
+apiVersion: v2
+name: interbox
+description: Integration Engine for Modern Healthcare Solutions
+type: application
+# Chart version — independent of the app (bump on chart changes).
+version: 0.1.0
+# interbox engine/image version deployed by default. `edge` = latest main build —
+# fine while pre-GA (avoids a chart bump per engine release). Pin to a released
+# semver (e.g. "1.4.1") for reproducible prod deploys at GA.
+appVersion: edge
+home: https://www.health-samurai.io/interbox
+icon: https://raw.githubusercontent.com/HealthSamurai/helm-charts/main/interbox/icon.png
+maintainers:
+  - name: Health Samurai
+keywords:
+  - hl7
+  - hl7v2
+  - fhir
+  - mllp
+  - integration
+  - interbox

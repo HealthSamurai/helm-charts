@@ -1,0 +1,36 @@
+{{- if .Values.mllp.enabled }}
+# MLLP is raw TCP — HTTP ingress can't carry it, so it gets a dedicated
+# LoadBalancer. `internal: true` requests a private LB; the cloud-specific
+# annotation for that comes from the values overlay (e.g. values-aks.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interbox.fullname" . }}-mllp
+  labels:
+    {{- include "interbox.labels" . | nindent 4 }}
+  {{- with .Values.mllp.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.mllp.service.type }}
+  {{- if and (ne .Values.mllp.service.type "ClusterIP") .Values.mllp.service.externalTrafficPolicy }}
+  # Preserve the sender's source IP (no SNAT) + skip the extra node hop.
+  externalTrafficPolicy: {{ .Values.mllp.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- if and (ne .Values.mllp.service.type "ClusterIP") .Values.mllp.service.loadBalancerIP }}
+  # Pinned so the address survives Service recreation (stable target for the VPN/firewall).
+  loadBalancerIP: {{ .Values.mllp.service.loadBalancerIP | quote }}
+  {{- end }}
+  {{- with .Values.mllp.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    {{- include "interbox.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: mllp
+      protocol: TCP
+      port: {{ .Values.mllp.port }}
+      targetPort: mllp
+{{- end }}
