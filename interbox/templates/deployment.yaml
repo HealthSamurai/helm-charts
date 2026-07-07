@@ -48,6 +48,14 @@ spec:
                 name: {{ include "interbox.fullname" . }}-config
             - secretRef:
                 name: {{ include "interbox.secretName" . }}
+            {{- range .Values.extraEnvFromConfigMaps }}
+            - configMapRef:
+                name: {{ . }}
+            {{- end }}
+            {{- range .Values.extraEnvFromSecrets }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
           {{- $probe := .Values.probe }}
           {{- with $probe.startup }}
           startupProbe:

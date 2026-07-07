@@ -105,6 +105,8 @@ secrets:
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — interbox never calls the Kubernetes API. |
 | config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names. `AIDBOX_URL` points at your Aidbox (the sibling `aidbox` chart in-cluster, or an existing external one). Uncomment `AIDBOX_CLIENT_ID` to authenticate as a scoped least-privilege client (defaults to `root`). |
 | database.createDatabase | bool | `true` | Engine self-creates the `interbox` db on boot when the DATABASE_URL user has `CREATEDB`. `false` → sets `INTERBOX_SKIP_ENSURE_DB`; pre-create the db yourself (locked-down managed PG). |
+| extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart. |
+| extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
 | fullnameOverride | string | `""` | Override the full resource name (default: the chart name — keeps the in-cluster service name stable). |
 | image.digest | string | `""` | Pin by digest (wins over tag when set). |
 | image.pullPolicy | string | `"Always"` | Image pull policy. `Always` refreshes the moving `edge` tag; set `IfNotPresent` once pinned. |

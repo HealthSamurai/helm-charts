@@ -116,6 +116,11 @@ secrets:
     ANTHROPIC_API_KEY: ""
     INTERBOX_WORKSPACE_GIT_KEY: ""
 
+# -- Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart.
+extraEnvFromConfigMaps: []
+# -- Extra Secrets to load env from (envFrom).
+extraEnvFromSecrets: []
+
 database:
   # -- Engine self-creates the `interbox` db on boot when the DATABASE_URL user has `CREATEDB`.
   # `false` → sets `INTERBOX_SKIP_ENSURE_DB`; pre-create the db yourself (locked-down managed PG).
