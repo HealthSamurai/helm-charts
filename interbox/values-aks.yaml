@@ -1,0 +1,39 @@
+# AKS overlay (priority target). Use with your own secrets values file:
+#   helm install interbox HealthSamurai/interbox \
+#     -f values-aks.yaml -f my-secrets.yaml
+#
+# Base chart stays cloud-agnostic; this only sets Azure-specific knobs.
+
+# Internal-only posture — nothing is exposed to the public internet.
+mllp:
+  service:
+    internal: true
+    annotations:
+      # Private Azure Load Balancer — MLLP reachable within the VNet/VPN only, no public IP.
+      service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+      # MLLP connections are long-lived + idle between messages; raise the LB idle
+      # timeout (minutes, max 30) so idle feeds aren't dropped.
+      service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "30"
+    externalTrafficPolicy: Local
+    # Pin the internal LB's private IP (survives reinstall; plan the VPN/firewall
+    # around a stable address). Must be a free IP in the LB subnet.
+    # loadBalancerIP: 10.20.0.5
+    # (Azure-native alternative: annotation service.beta.kubernetes.io/azure-load-balancer-ipv4: 10.20.0.5)
+    # Optionally lock the internal LB to the sender subnets reachable over the VPN:
+    # loadBalancerSourceRanges:
+    #   - 10.10.0.0/16
+
+# Dashboard/API: NOT exposed publicly. Reach it via `kubectl port-forward`, or for
+# VPN/private access enable an INTERNAL ingress — an ingress class whose controller
+# sits behind an internal LB (e.g. a separately-installed nginx-internal). Annotations
+# on the Ingress object won't make it internal; that's a controller concern.
+ingress:
+  enabled: false
+  # enabled: true
+  # className: nginx-internal
+  # host: interbox.internal.example.com
+
+# Postgres: Azure Database for PostgreSQL Flexible Server (external, private
+# endpoint). Provide DATABASE_URL (user with CREATEDB) in your secrets file.
+database:
+  createDatabase: true

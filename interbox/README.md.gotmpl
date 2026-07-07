@@ -1,0 +1,100 @@
+{{ template "chart.header" . }}
+
+Integration Engine for Modern Healthcare Solutions — the all-in-one interbox
+(engine + API + dashboard). Ingests HL7v2 over MLLP and delivers FHIR to Aidbox.
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Prerequisites
+
+interbox needs a **Postgres** database and an **Aidbox** endpoint — see
+[PREREQUISITES.md](./PREREQUISITES.md). Postgres and Aidbox are NOT bundled; install
+the sibling [`postgres`](../postgres) / [`aidbox`](../aidbox) charts if you need them
+in-cluster.
+
+## Installation
+
+```console
+helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
+
+helm upgrade --install interbox healthsamurai/interbox \
+  --namespace interbox --create-namespace \
+  --values /path/to/values.yaml
+```
+
+Minimal `values.yaml`:
+
+```yaml
+config:
+  AIDBOX_URL: http://aidbox:8080          # your Aidbox (sibling chart or external)
+secrets:
+  data:
+    DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
+    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+```
+
+The dashboard + API serve on `3001`; MLLP (HL7v2) on TCP `2575` via a dedicated
+LoadBalancer. See [`values-aks.yaml`](./values-aks.yaml) for the Azure overlay.
+
+## Setup scenarios
+
+All snippets are the interbox values. Add `-f values-aks.yaml` for the internal MLLP
+LoadBalancer + pinned IP + idle-timeout on AKS. Aidbox/Postgres are external unless
+you install the sibling charts. Sibling service names depend on their release names —
+check their `helm install` output.
+
+### 1. Existing Aidbox + managed Postgres (typical prod)
+interbox creates its own `interbox` database on your managed PG and delivers to your
+existing Aidbox.
+```yaml
+config:
+  AIDBOX_URL: https://aidbox.internal
+secrets:
+  data:
+    DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
+    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+```
+
+### 2. Existing Aidbox — reuse its Postgres cluster
+No separate DB server: interbox gets a dedicated `interbox` database on the same
+cluster Aidbox uses (not Aidbox's own database).
+```yaml
+config:
+  AIDBOX_URL: https://aidbox.internal
+secrets:
+  data:
+    DATABASE_URL: postgres://interbox:pass@aidbox-pg:5432/interbox?sslmode=require
+    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+```
+
+### 3. No Aidbox / no Postgres yet — install the sibling charts (dev/stage)
+```console
+helm install pg       healthsamurai/postgres -n interbox --create-namespace
+helm install aidbox   healthsamurai/aidbox   -n interbox
+helm install interbox healthsamurai/interbox -n interbox -f dev-values.yaml
+```
+`dev-values.yaml` (point at the sibling charts' service names):
+```yaml
+config:
+  AIDBOX_URL: http://aidbox:8080
+secrets:
+  data:
+    DATABASE_URL: postgres://interbox:pass@pg-postgres:5432/interbox   # user needs CREATEDB
+    AIDBOX_CLIENT_SECRET: secret
+```
+
+### 4. Locked-down managed PG (no admin grant)
+Pre-create the db + extensions yourself (see [PREREQUISITES.md](./PREREQUISITES.md));
+`createDatabase: false` sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips its bootstrap.
+```yaml
+database:
+  createDatabase: false
+config:
+  AIDBOX_URL: https://aidbox.internal
+secrets:
+  data:
+    DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
+    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+```
+
+{{ template "chart.valuesSection" . }}

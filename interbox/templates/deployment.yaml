@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interbox.fullname" . }}
+  labels:
+    {{- include "interbox.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "interbox.selectorLabels" . | nindent 6 }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "interbox.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if include "interbox.serviceAccountName" . }}
+      serviceAccountName: {{ include "interbox.serviceAccountName" . }}
+      {{- end }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "interbox.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            {{- if .Values.mllp.enabled }}
+            - name: mllp
+              containerPort: {{ .Values.mllp.port }}
+              protocol: TCP
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "interbox.fullname" . }}-config
+            - secretRef:
+                name: {{ include "interbox.secretName" . }}
+            {{- range .Values.extraEnvFromConfigMaps }}
+            - configMapRef:
+                name: {{ . }}
+            {{- end }}
+            {{- range .Values.extraEnvFromSecrets }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- $probe := .Values.probe }}
+          {{- with $probe.startup }}
+          startupProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: http
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $probe.liveness }}
+          livenessProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: http
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $probe.readiness }}
+          readinessProbe:
+            httpGet:
+              path: {{ $probe.path }}
+              port: http
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
