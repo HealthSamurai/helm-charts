@@ -160,6 +160,11 @@ ingress:
   className: ""
   # -- Ingress host.
   host: interbox.example.com
+  # -- Ingress path. Default `/` (works nginx / AGIC / modern ALB). AWS ALB + GKE gce
+  # prefer `/*` — pair it with pathType: ImplementationSpecific.
+  path: /
+  # -- Ingress pathType (Prefix | ImplementationSpecific | Exact).
+  pathType: Prefix
   # -- Ingress annotations.
   annotations: {}
   # -- Ingress TLS blocks.

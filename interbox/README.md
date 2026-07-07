@@ -117,6 +117,8 @@ secrets:
 | ingress.className | string | `""` | Ingress class name. |
 | ingress.enabled | bool | `false` | Ingress for the dashboard/API. Enable ONLY with an internal ingress class — never public. |
 | ingress.host | string | `"interbox.example.com"` | Ingress host. |
+| ingress.path | string | `"/"` | Ingress path. Default `/` (works nginx / AGIC / modern ALB). AWS ALB + GKE gce prefer `/*` — pair it with pathType: ImplementationSpecific. |
+| ingress.pathType | string | `"Prefix"` | Ingress pathType (Prefix | ImplementationSpecific | Exact). |
 | ingress.tls | list | `[]` | Ingress TLS blocks. |
 | mllp.enabled | bool | `true` | Expose MLLP (HL7v2 raw-TCP ingest). |
 | mllp.port | int | `2575` | MLLP TCP port. |
