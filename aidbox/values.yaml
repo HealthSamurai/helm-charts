@@ -121,6 +121,17 @@ nodeSelector: {}
 
 initContainers: []
 
+# -- Additional sidecar containers to run alongside Aidbox in the same pod.
+# Rendered with `tpl`, so Helm templates (e.g. {{ .Release.Namespace }}) can be used.
+extraContainers: ""
+# extraContainers: |
+# - name: sidecar
+#   image: busybox:latest
+#   command: ["sh", "-c", "while true; do sleep 3600; done"]
+#   volumeMounts:
+#     - name: foo
+#       mountPath: /data
+
 auditbox:
   enabled: false
   host: auditbox.health-samurai.io

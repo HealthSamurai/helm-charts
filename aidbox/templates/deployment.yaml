@@ -95,6 +95,9 @@ spec:
             - name: auditbox-config
               mountPath: /etc/envoy
         {{- end }}
+        {{- with .Values.extraContainers }}
+        {{- tpl . $ | nindent 8 }}
+        {{- end }}
       {{- with .Values.initContainers }}
       initContainers:
         {{- toYaml . | nindent 8 }}
