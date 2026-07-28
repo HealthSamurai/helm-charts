@@ -7,7 +7,7 @@
 > Important! Starting from version: `0.2.x`, the repo fully switched to the new environment variable naming conventions introduced in Aidbox version: 2503.
 To keep the old naming convention, stick with version in `0.1.x` More information about naming convention you can find [here](https://docs.aidbox.app/reference/settings).
 
-![Version: 0.2.15](https://img.shields.io/badge/Version-0.2.15-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.2.16](https://img.shields.io/badge/Version-0.2.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -76,6 +76,10 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | nameOverride | string | `""` |  |
 | nodeSelector | object | `{}` |  |
 | podAnnotations | object | `{}` |  |
+| podDisruptionBudget.enabled | bool | `false` |  |
+| podDisruptionBudget.maxUnavailable | int | `1` |  |
+| podDisruptionBudget.minAvailable | int | `0` |  |
+| podDisruptionBudget.unhealthyPodEvictionPolicy | string | `"IfHealthyBudget"` |  |
 | podLabels | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | protocol | string | `"http"` | Protocol to be used to access Aidbox (http or https) |

@@ -133,6 +133,12 @@ extraContainers: ""
 #     - name: foo
 #       mountPath: /data
 
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 0
+  maxUnavailable: 1
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+
 auditbox:
   enabled: false
   host: auditbox.health-samurai.io
