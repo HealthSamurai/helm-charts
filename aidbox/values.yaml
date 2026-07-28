@@ -85,6 +85,7 @@ service:
   type: ClusterIP
   apiPort: 80
   metricsPort: 80
+  annotations: {}
 
 nameOverride: ""
 fullnameOverride: ""
