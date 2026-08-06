@@ -1,0 +1,19 @@
+termbox {{ .Chart.AppVersion }} installed as release {{ .Release.Name }} in {{ .Release.Namespace }}.
+
+API + UI:
+{{- if .Values.ingress.enabled }}
+  https://{{ .Values.ingress.host }}
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "termbox.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  # then open http://localhost:{{ .Values.service.port }}/ui or http://localhost:{{ .Values.service.port }}/fhir/metadata
+{{- end }}
+
+{{- if not .Values.secrets.data.LICENSE }}
+{{- if not .Values.secrets.existingSecretName }}
+
+WARNING: secrets.data.LICENSE is not set — the FHIR API returns 403 without a valid
+license, and this chart's probes httpGet /fhir/metadata, so the pod will never become
+Ready. Get a license and set secrets.data.LICENSE. See
+https://www.health-samurai.io/docs/termbox/licensing.
+{{- end }}
+{{- end }}

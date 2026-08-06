@@ -1,0 +1,78 @@
+{{ template "chart.header" . }}
+
+FHIR Terminology Server by Health Samurai — CodeSystem, ValueSet and ConceptMap, with
+standard FHIR terminology operations ($lookup, $validate-code, $expand, $translate,
+$subsumes, $find-matches). See the [docs](https://www.health-samurai.io/docs/termbox).
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Prerequisites
+
+termbox needs a **Postgres** database and a **license** — see
+[PREREQUISITES.md](./PREREQUISITES.md). Postgres is NOT bundled; install the sibling
+[`postgres`](../postgres) chart if you need it in-cluster.
+
+## Installation
+
+```console
+helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
+
+helm upgrade --install termbox healthsamurai/termbox \
+  --namespace termbox --create-namespace \
+  --values /path/to/values.yaml
+```
+
+Minimal `values.yaml`:
+
+```yaml
+config:
+  PG_HOST: pg-postgres           # your Postgres (sibling chart or external)
+  PG_DATABASE: termbox
+  PG_USER: termbox
+secrets:
+  data:
+    PG_PASSWORD: <postgres password>
+    LICENSE: <termbox license key>
+```
+
+The API + UI serve on `3000` (`/fhir` for FHIR, `/ui` for the dashboard). The chart's
+probes `httpGet` the FHIR API (`/fhir/metadata`), which requires a valid `LICENSE` —
+without one the pod never becomes Ready. See
+[Licensing](https://www.health-samurai.io/docs/termbox/licensing).
+
+## Setup scenarios
+
+### 1. Managed Postgres (typical prod)
+
+```yaml
+config:
+  PG_HOST: pg.internal
+  PG_DATABASE: termbox
+  PG_USER: termbox
+secrets:
+  data:
+    PG_PASSWORD: <password>
+    LICENSE: <production license key>
+```
+
+### 2. No Postgres yet — install the sibling chart (dev/stage)
+
+```console
+helm install pg      healthsamurai/postgres -n termbox --create-namespace
+helm install termbox healthsamurai/termbox  -n termbox -f dev-values.yaml
+```
+
+`dev-values.yaml` (point at the sibling chart's service name):
+
+```yaml
+config:
+  PG_HOST: pg-postgres
+  PG_DATABASE: termbox
+  PG_USER: postgres
+secrets:
+  data:
+    PG_PASSWORD: postgres
+    LICENSE: <termbox license key>
+```
+
+{{ template "chart.valuesSection" . }}
