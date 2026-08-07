@@ -28,16 +28,15 @@ Minimal `values.yaml`:
 config:
   PG_HOST: pg-postgres           # your Postgres (sibling chart or external)
   PG_DATABASE: termbox
-  PG_USER: termbox
 secrets:
   data:
+    PG_USER: termbox
     PG_PASSWORD: <postgres password>
     LICENSE: <termbox license key>
 ```
 
 The API + UI serve on `3000` (`/fhir` for FHIR, `/ui` for the dashboard). The chart's
-probes `httpGet` the FHIR API (`/fhir/metadata`), which requires a valid `LICENSE` —
-without one the pod never becomes Ready. See
+probes `httpGet` the FHIR API (`/fhir/metadata`), which requires a valid `LICENSE`. See
 [Licensing](https://www.health-samurai.io/docs/termbox/licensing).
 
 ## Setup scenarios
@@ -48,9 +47,9 @@ without one the pod never becomes Ready. See
 config:
   PG_HOST: pg.internal
   PG_DATABASE: termbox
-  PG_USER: termbox
 secrets:
   data:
+    PG_USER: termbox
     PG_PASSWORD: <password>
     LICENSE: <production license key>
 ```
@@ -68,9 +67,9 @@ helm install termbox healthsamurai/termbox  -n termbox -f dev-values.yaml
 config:
   PG_HOST: pg-postgres
   PG_DATABASE: termbox
-  PG_USER: postgres
 secrets:
   data:
+    PG_USER: postgres
     PG_PASSWORD: postgres
     LICENSE: <termbox license key>
 ```
@@ -81,7 +80,7 @@ secrets:
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — termbox never calls the Kubernetes API. |
-| config | object | `{"LOG_FORMAT":"text","LOG_MIN_LEVEL":"INFO","PG_DATABASE":"termbox","PG_HOST":"postgres","PG_PORT":"5432","PG_USER":"postgres"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names — see https://www.health-samurai.io/docs/termbox/configuration for the full list (logging, feature toggles, FHIR API version routes, etc.). |
+| config | object | `{"HTTP_PORT":"3000","LOG_FORMAT":"text","LOG_MIN_LEVEL":"INFO","PG_DATABASE":"termbox","PG_HOST":"postgres","PG_PORT":"5432"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names — see https://www.health-samurai.io/docs/termbox/configuration for the full list (logging, feature toggles, FHIR API version routes, etc.). |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart. |
 | extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
 | fullnameOverride | string | `""` | Override the full resource name (default: the chart name — keeps the in-cluster service name stable). |
@@ -100,17 +99,17 @@ secrets:
 | nameOverride | string | `""` | Override the chart name used in resource names. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Extra pod annotations. |
-| probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
+| probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":1}` | Liveness probe. |
 | probe.path | string | `"/fhir/metadata"` | HTTP health path. |
-| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
+| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":1}` | Readiness probe. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
-| probe.startup | object | `{"failureThreshold":30,"initialDelaySeconds":5,"periodSeconds":5}` | Startup probe. Generous: covers boot-time DB migrations. |
+| probe.startup | object | `{"failureThreshold":30,"initialDelaySeconds":10,"periodSeconds":5}` | Startup probe. Generous: covers boot-time DB migrations. |
 | replicaCount | int | `1` | Pod replicas. |
 | resources | object | `{}` | Pod resource requests / limits. e.g. requests: {cpu: 100m, memory: 512Mi}. |
-| secrets.data | object | `{"LICENSE":"","PG_PASSWORD":""}` | Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written. `PG_PASSWORD` and `LICENSE` are both required — the chart's probes httpGet the FHIR API, which returns 403 without a valid license, so the pod never becomes Ready without one. See https://www.health-samurai.io/docs/termbox/licensing. |
+| secrets.data | object | `{"LICENSE":"","PG_PASSWORD":"","PG_USER":""}` | Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written. `PG_USER`, `PG_PASSWORD` and `LICENSE` are all required. See https://www.health-samurai.io/docs/termbox/licensing. |
 | secrets.existingSecretName | string | `""` | Use a pre-provisioned Secret instead of creating one from `data` below (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. Hardened for prod. |
-| service.port | int | `3000` | Service port and the container's HTTP_PORT (kept in sync — see templates/deployment.yaml). |
+| service.port | int | `80` | Service port. Forwards to the container's HTTP_PORT (config.HTTP_PORT) via the named "http" targetPort — the two can differ freely. |
 | service.type | string | `"ClusterIP"` | Service type. |
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
 | serviceAccount.create | bool | `false` | Create a ServiceAccount for the pod. |

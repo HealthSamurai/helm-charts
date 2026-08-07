@@ -28,9 +28,9 @@ Minimal `values.yaml`:
 config:
   PG_HOST: pg-postgres           # your Postgres (sibling chart or external)
   PG_DATABASE: termbox
-  PG_USER: termbox
 secrets:
   data:
+    PG_USER: termbox
     PG_PASSWORD: <postgres password>
     LICENSE: <termbox license key>
 ```
@@ -47,9 +47,9 @@ probes `httpGet` the FHIR API (`/fhir/metadata`), which requires a valid `LICENS
 config:
   PG_HOST: pg.internal
   PG_DATABASE: termbox
-  PG_USER: termbox
 secrets:
   data:
+    PG_USER: termbox
     PG_PASSWORD: <password>
     LICENSE: <production license key>
 ```
@@ -67,9 +67,9 @@ helm install termbox healthsamurai/termbox  -n termbox -f dev-values.yaml
 config:
   PG_HOST: pg-postgres
   PG_DATABASE: termbox
-  PG_USER: postgres
 secrets:
   data:
+    PG_USER: postgres
     PG_PASSWORD: postgres
     LICENSE: <termbox license key>
 ```

@@ -6,8 +6,7 @@ Postgres is an external dependency you point it at.
 ## 1. Postgres
 
 termbox connects with discrete `PG_*` variables (`PG_HOST`, `PG_PORT`, `PG_USER`,
-`PG_PASSWORD`, `PG_DATABASE`). No extensions or special grants are documented; a plain
-database + role with the usual privileges on it is enough. Options:
+`PG_PASSWORD`, `PG_DATABASE`). Options:
 
 - **Managed** (recommended for prod) — Azure Database for PostgreSQL Flexible Server,
   Cloud SQL, RDS, etc. See also
@@ -39,7 +38,8 @@ Either let the chart create the Secret from `secrets.data`, or provision your ow
 
 | Key | Required | Purpose |
 |-----|----------|---------|
-| `PG_PASSWORD` | yes (unless using Databricks OAuth) | Postgres password for `config.PG_USER` |
+| `PG_USER` | yes (unless using Databricks OAuth) | Postgres user |
+| `PG_PASSWORD` | yes (unless using Databricks OAuth) | Postgres password for `PG_USER` |
 | `LICENSE` | yes | required for the FHIR API |
 
 ## 4. Full list of settings

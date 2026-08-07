@@ -36,14 +36,8 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ .Values.config.HTTP_PORT }}
               protocol: TCP
-          env:
-            # Single source of truth for the listen port — kept in sync with the
-            # Service/containerPort via .Values.service.port instead of duplicating
-            # it in .Values.config.
-            - name: HTTP_PORT
-              value: {{ .Values.service.port | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "termbox.fullname" . }}-config
