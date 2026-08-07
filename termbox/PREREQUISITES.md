@@ -1,6 +1,6 @@
 # termbox chart — prerequisites
 
-termbox is a standalone FHIR Terminology Server. This chart deploys **only termbox**;
+Termbox is a standalone FHIR Terminology Server. This chart deploys **only termbox**;
 Postgres is an external dependency you point it at.
 
 ## 1. Postgres
