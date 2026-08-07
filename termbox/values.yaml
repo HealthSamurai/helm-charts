@@ -26,8 +26,7 @@ image:
 # -- Image pull secrets for a private registry.
 imagePullSecrets: []
 
-# HTTP probes against the FHIR API — requires a valid LICENSE (secrets.data.LICENSE),
-# otherwise /fhir/metadata returns 403 and the pod never becomes Ready.
+# HTTP probes against the FHIR API — requires a valid LICENSE (secrets.data.LICENSE)
 probe:
   # -- HTTP health path.
   path: /fhir/metadata
