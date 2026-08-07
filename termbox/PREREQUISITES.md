@@ -40,7 +40,7 @@ Either let the chart create the Secret from `secrets.data`, or provision your ow
 | Key | Required | Purpose |
 |-----|----------|---------|
 | `PG_PASSWORD` | yes (unless using Databricks OAuth) | Postgres password for `config.PG_USER` |
-| `LICENSE` | yes | required for the FHIR API — and for the pod's probes to pass |
+| `LICENSE` | yes | required for the FHIR API |
 
 ## 4. Full list of settings
 
