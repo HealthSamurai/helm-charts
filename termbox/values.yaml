@@ -103,9 +103,7 @@ secrets:
   # -- Use a pre-provisioned Secret instead of creating one from `data` below (External Secrets Operator, sealed-secrets, …).
   existingSecretName: ""
   # -- Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written.
-  # `PG_PASSWORD` and `LICENSE` are both required — the chart's probes httpGet the FHIR
-  # API, which returns 403 without a valid license, so the pod never becomes Ready
-  # without one. See https://www.health-samurai.io/docs/termbox/licensing.
+  # `PG_PASSWORD` and `LICENSE` are both required. See https://www.health-samurai.io/docs/termbox/licensing.
   data:
     PG_PASSWORD: ""
     LICENSE: ""
