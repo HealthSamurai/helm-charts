@@ -34,7 +34,6 @@ secrets:
     PG_PASSWORD: <postgres password>
     LICENSE: <termbox license key>
 ```
-
 The API + UI serve on `3000` (`/fhir` for FHIR, `/ui` for the dashboard). The chart's
 probes `httpGet` the FHIR API (`/fhir/metadata`), which requires a valid `LICENSE`. See
 [Licensing](https://www.health-samurai.io/docs/termbox/licensing).
