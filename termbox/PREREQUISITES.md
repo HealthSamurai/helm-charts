@@ -29,9 +29,7 @@ termbox applies its own schema migrations on boot.
 ## 2. License
 
 termbox needs a license to serve FHIR API requests
-(https://www.health-samurai.io/docs/termbox/licensing). Set `secrets.data.LICENSE` —
-the chart's probes `httpGet` the FHIR API (`/fhir/metadata`), which returns 403 without
-a valid license, so the pod never becomes Ready without one. Get a free development
+(https://www.health-samurai.io/docs/termbox/licensing). Set `secrets.data.LICENSE`. Get a free development
 license at `/ui/license`, or a production one from Health Samurai.
 
 ## 3. Secrets
