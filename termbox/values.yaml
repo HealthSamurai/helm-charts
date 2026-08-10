@@ -63,7 +63,7 @@ nodeSelector: {}
 affinity: {}
 # -- Tolerations for scheduling.
 tolerations: []
-# -- Don't mount the ServiceAccount token — termbox never calls the Kubernetes API.
+# -- Don't mount the ServiceAccount token — Termbox never calls the Kubernetes API.
 automountServiceAccountToken: false
 
 # -- Container securityContext. Hardened for prod.
