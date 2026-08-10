@@ -44,7 +44,7 @@ app: {{ include "termbox.fullname" . }}
 {{- end -}}
 {{- end -}}
 
-{{/* termbox image ref (digest wins over tag; tag defaults to appVersion). */}}
+{{/* Termbox image ref (digest wins over tag; tag defaults to appVersion). */}}
 {{- define "termbox.image" -}}
 {{- if .Values.image.digest -}}
 {{- printf "%s@%s" .Values.image.repository .Values.image.digest -}}
