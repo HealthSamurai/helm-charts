@@ -5,7 +5,7 @@ Postgres is an external dependency you point it at.
 
 ## 1. Postgres
 
-termbox connects with discrete `PG_*` variables (`PG_HOST`, `PG_PORT`, `PG_USER`,
+Termbox connects with discrete `PG_*` variables (`PG_HOST`, `PG_PORT`, `PG_USER`,
 `PG_PASSWORD`, `PG_DATABASE`). Options:
 
 - **Managed** (recommended for prod) — Azure Database for PostgreSQL Flexible Server,
