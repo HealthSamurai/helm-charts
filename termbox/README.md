@@ -78,7 +78,7 @@ secrets:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
-| automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — termbox never calls the Kubernetes API. |
+| automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — Termbox never calls the Kubernetes API. |
 | config | object | `{"HTTP_PORT":"3000","LOG_FORMAT":"text","LOG_MIN_LEVEL":"INFO","PG_DATABASE":"termbox","PG_HOST":"postgres","PG_PORT":"5432"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names — see https://www.health-samurai.io/docs/termbox/configuration for the full list (logging, feature toggles, FHIR API version routes, etc.). |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart. |
 | extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
