@@ -1,5 +1,5 @@
 {{/*
-Helpers for the termbox chart. fullname defaults to the chart name (NOT
+Helpers for the Termbox chart. fullname defaults to the chart name (NOT
 release-prefixed) so the in-cluster service name stays stable/predictable
 (http://termbox:3000). Override with fullnameOverride when needed.
 */}}
