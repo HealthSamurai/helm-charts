@@ -30,10 +30,10 @@ aidbox-admin:
   # aidbox-admin-env Secret (appended after .config, so it wins). Keep secrets OUT of .config.
   extraEnvFromSecrets:
   - aidbox-admin-env
-  # The init-bundle is a ${VAR} template (ConfigMap = init-bundle-src). An initContainer runs
-  # envsubst — restricted to the listed vars so Aidbox matcho operators ($one-of, $sql, …) are
-  # left intact — and writes the substituted bundle to the emptyDir Aidbox reads. Re-renders on
-  # every pod start, so it survives helm upgrades (no manual patching).
+  # The init-bundle is a ${VAR} template (ConfigMap = init-bundle-src). An initContainer
+  # substitutes only the listed placeholders with sed — replacing exact ${VAR} tokens, so Aidbox
+  # matcho operators ($one-of, $sql, …) are left intact — and writes the result to the emptyDir
+  # Aidbox reads. Re-renders on every pod start, so it survives helm upgrades (no manual patching).
   volumes:
   - name: init-bundle-src
     configMap:
@@ -45,10 +45,10 @@ aidbox-admin:
     mountPath: /init-bundle
   initContainers:
   - name: render-init-bundle
-    image: healthsamurai/aidboxone:2605 # reuse the Aidbox image (already ships envsubst)
+    image: busybox:1.36
     command: [ "/bin/sh", "-c" ]
     args:
-    - "envsubst '${ADMIN_FRONTEND_URL} ${ADMIN_API_CLIENT_SECRET}' < /init-bundle-src/init-bundle.json > /init-bundle/init-bundle.json"
+    - 'sed -e "s|\${ADMIN_FRONTEND_URL}|${ADMIN_FRONTEND_URL}|g" -e "s|\${ADMIN_API_CLIENT_SECRET}|${ADMIN_API_CLIENT_SECRET}|g" /init-bundle-src/init-bundle.json > /init-bundle/init-bundle.json'
     envFrom:
     - configMapRef: { name: aidbox-admin } # non-secret URLs from .config above
     env:
@@ -94,7 +94,7 @@ aidbox-sandbox:
     AIDBOX_ADMIN_URL: https://aidbox.example.com
   extraEnvFromSecrets:
   - aidbox-sandbox-env
-  # See aidbox-admin above — same envsubst render pattern.
+  # See aidbox-admin above — same sed render pattern.
   volumes:
   - name: init-bundle-src
     configMap:
@@ -106,10 +106,10 @@ aidbox-sandbox:
     mountPath: /init-bundle
   initContainers:
   - name: render-init-bundle
-    image: healthsamurai/aidboxone:2605
+    image: busybox:1.36
     command: [ "/bin/sh", "-c" ]
     args:
-    - "envsubst '${DEVELOPER_FRONTEND_URL} ${ADMIN_AIDBOX_PUBLIC_URL} ${AIDBOX_ADMIN_URL} ${DEVELOPER_API_CLIENT_SECRET}' < /init-bundle-src/init-bundle.json > /init-bundle/init-bundle.json"
+    - 'sed -e "s|\${DEVELOPER_FRONTEND_URL}|${DEVELOPER_FRONTEND_URL}|g" -e "s|\${ADMIN_AIDBOX_PUBLIC_URL}|${ADMIN_AIDBOX_PUBLIC_URL}|g" -e "s|\${AIDBOX_ADMIN_URL}|${AIDBOX_ADMIN_URL}|g" -e "s|\${DEVELOPER_API_CLIENT_SECRET}|${DEVELOPER_API_CLIENT_SECRET}|g" /init-bundle-src/init-bundle.json > /init-bundle/init-bundle.json'
     envFrom:
     - configMapRef: { name: aidbox-sandbox } # non-secret URLs from .config above
     env:
