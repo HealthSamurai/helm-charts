@@ -1,0 +1,19 @@
+apiVersion: v2
+name: termbox
+description: FHIR Terminology Server by Health Samurai — CodeSystem, ValueSet and ConceptMap, with standard FHIR terminology operations ($lookup, $validate-code, $expand, $translate, $subsumes, $find-matches).
+type: application
+# Chart version — independent of the app (bump on chart changes).
+version: 0.1.0
+# Termbox image tag deployed by default. `latest` points to the latest stable release, `edge` points to the current dev image; pin to a release tag for reproducible prod deployments
+appVersion: latest
+home: https://www.health-samurai.io/docs/termbox
+icon: https://raw.githubusercontent.com/HealthSamurai/helm-charts/main/termbox/icon.png
+maintainers:
+  - name: Health Samurai
+keywords:
+  - fhir
+  - terminology
+  - codesystem
+  - valueset
+  - conceptmap
+  - termbox
