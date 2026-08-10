@@ -1,7 +1,7 @@
 # Termbox — FHIR Terminology Server (CodeSystem/ValueSet/ConceptMap + standard
 # FHIR terminology operations: $lookup, $validate-code, $expand, $translate, ...).
 #
-# Standalone chart: deploys termbox only. Postgres is NOT bundled — point termbox at
+# Standalone chart: deploys Termbox only. Postgres is NOT bundled — point Termbox at
 # an existing database via config/secrets. Need one in-cluster? Install the sibling
 # `postgres` chart (see PREREQUISITES.md) and set config.PG_HOST / secrets.data.PG_USER / secrets.data.PG_PASSWORD.
 
