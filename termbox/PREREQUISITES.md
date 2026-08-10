@@ -15,7 +15,7 @@ Termbox connects with discrete `PG_*` variables (`PG_HOST`, `PG_PORT`, `PG_USER`
 - **In-cluster** — install the sibling [`postgres`](../postgres) chart.
 
 Create the database (name must match `config.PG_DATABASE`, default `termbox`) and a role
-termbox can connect as:
+Termbox can connect as:
 
 ```sql
 CREATE DATABASE termbox;
