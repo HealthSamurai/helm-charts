@@ -8,7 +8,7 @@ $subsumes, $find-matches). See the [docs](https://www.health-samurai.io/docs/ter
 
 ## Prerequisites
 
-termbox needs a **Postgres** database and a **license** — see
+Termbox needs a **Postgres** database and a **license** — see
 [PREREQUISITES.md](./PREREQUISITES.md). Postgres is NOT bundled; install the sibling
 [`postgres`](../postgres) chart if you need it in-cluster.
 
