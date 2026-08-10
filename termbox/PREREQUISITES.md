@@ -23,7 +23,7 @@ CREATE USER termbox WITH PASSWORD 'change-me';
 GRANT ALL PRIVILEGES ON DATABASE termbox TO termbox;
 ```
 
-termbox applies its own schema migrations on boot.
+Termbox applies its own schema migrations on boot.
 
 ## 2. License
 
