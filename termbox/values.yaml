@@ -1,4 +1,4 @@
-# termbox — FHIR Terminology Server (CodeSystem/ValueSet/ConceptMap + standard
+# Termbox — FHIR Terminology Server (CodeSystem/ValueSet/ConceptMap + standard
 # FHIR terminology operations: $lookup, $validate-code, $expand, $translate, ...).
 #
 # Standalone chart: deploys termbox only. Postgres is NOT bundled — point termbox at
