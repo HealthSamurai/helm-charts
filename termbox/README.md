@@ -1,4 +1,4 @@
-# termbox
+# Termbox
 
 FHIR Terminology Server by Health Samurai — CodeSystem, ValueSet and ConceptMap, with
 standard FHIR terminology operations ($lookup, $validate-code, $expand, $translate,
