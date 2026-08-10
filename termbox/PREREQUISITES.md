@@ -27,7 +27,7 @@ Termbox applies its own schema migrations on boot.
 
 ## 2. License
 
-termbox needs a license to serve FHIR API requests
+Termbox needs a license to serve FHIR API requests
 (https://www.health-samurai.io/docs/termbox/licensing). Set `secrets.data.LICENSE`. Get a free development
 license at `/ui/license`, or a production one from Health Samurai.
 
