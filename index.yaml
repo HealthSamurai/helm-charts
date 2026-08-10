@@ -297,4 +297,28 @@ entries:
     urls:
     - prior-auth-0.1.0.tgz
     version: 0.1.0
-generated: "2026-07-28T06:47:08.719968441Z"
+  termbox:
+  - apiVersion: v2
+    appVersion: latest
+    created: "2026-08-10T15:40:53.04533402Z"
+    description: FHIR Terminology Server by Health Samurai — CodeSystem, ValueSet
+      and ConceptMap, with standard FHIR terminology operations ($lookup, $validate-code,
+      $expand, $translate, $subsumes, $find-matches).
+    digest: ac4dc5ce156f800ef0ccf684e6df00ff63506192ca74c47bc1d6ef1676efb407
+    home: https://www.health-samurai.io/docs/termbox
+    icon: https://raw.githubusercontent.com/HealthSamurai/helm-charts/main/termbox/icon.png
+    keywords:
+    - fhir
+    - terminology
+    - codesystem
+    - valueset
+    - conceptmap
+    - termbox
+    maintainers:
+    - name: Health Samurai
+    name: termbox
+    type: application
+    urls:
+    - termbox-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-08-10T15:40:53.045362334Z"
