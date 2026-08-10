@@ -4,36 +4,93 @@
   "entry": [
     {
       "resource": {
-        "resourceType": "FHIRSchema",
-        "url": "http://aidbox.app/StructureDefinition/Client/created-by",
-        "id": "client-created-by",
-        "base": "Extension",
-        "name": "client-created-by",
-        "kind": "complex-type",
-        "type": "Extension",
-        "version": "0.0.1",
-        "elements": {
-          "url": {
-            "fixed": "http://aidbox.app/StructureDefinition/Client/created-by"
+        "resourceType": "AccessPolicy",
+        "id": "admin-api-access-policy",
+        "engine": "matcho",
+        "description": "Allow admin-api client to manage per-backend-service AccessPolicies (bs-policy-*) created/removed on app approval/deactivation (#478) and per-admin AccessPolicies (admin-*) created with each portal admin (#580)",
+        "matcho": {
+          "client": {
+            "id": "admin-api"
           },
-          "value": {
-            "choices": [
-              "valueReference"
+          "request-method": {
+            "$one-of": [
+              "get",
+              "put",
+              "post",
+              "delete"
             ]
           },
-          "valueReference": {
-            "type": "Reference",
-            "refers": [
-              "User"
-            ],
-            "choiceOf": "value"
+          "uri": {
+            "$one-of": [
+              "#^/AccessPolicy/bs-policy-.*",
+              "#^/fhir/AccessPolicy/bs-policy-.*",
+              "#^/AccessPolicy/admin-[a-zA-Z0-9._-]+$",
+              "#^/fhir/AccessPolicy/admin-[a-zA-Z0-9._-]+$"
+            ]
           }
-        },
-        "derivation": "constraint"
+        }
       },
       "request": {
         "method": "PUT",
-        "url": "FHIRSchema/client-created-by"
+        "url": "AccessPolicy/admin-api-access-policy"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "client-created-by",
+        "url": "http://aidbox.app/StructureDefinition/Client/created-by",
+        "name": "client-created-by",
+        "status": "active",
+        "kind": "complex-type",
+        "abstract": false,
+        "type": "Extension",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "context": [
+          {
+            "type": "element",
+            "expression": "Client"
+          }
+        ],
+        "differential": {
+          "element": [
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "min": 0,
+              "max": "1"
+            },
+            {
+              "id": "Extension.extension",
+              "path": "Extension.extension",
+              "max": "0"
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://aidbox.app/StructureDefinition/Client/created-by"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "max": "1",
+              "type": [
+                {
+                  "code": "Reference",
+                  "targetProfile": [
+                    "http://health-samurai.io/fhir/core/StructureDefinition/User"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/client-created-by"
       }
     },
     {
@@ -58,39 +115,65 @@
     },
     {
       "resource": {
-        "resourceType": "FHIRSchema",
-        "url": "http://aidbox.app/StructureDefinition/Client/status",
+        "resourceType": "StructureDefinition",
         "id": "client-status",
-        "base": "Extension",
+        "url": "http://aidbox.app/StructureDefinition/Client/status",
         "name": "client-status",
+        "status": "active",
         "kind": "complex-type",
+        "abstract": false,
         "type": "Extension",
-        "version": "0.0.2",
-        "elements": {
-          "url": {
-            "fixed": "http://aidbox.app/StructureDefinition/Client/status"
-          },
-          "value": {
-            "choices": [
-              "valueCode"
-            ]
-          },
-          "valueCode": {
-            "type": "code",
-            "choiceOf": "value",
-            "constraints": {
-              "enum-client-status": {
-                "severity": "error",
-                "expression": "%context.subsetOf('draft' | 'review' | 'active' | 'rejected')"
-              }
-            }
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "context": [
+          {
+            "type": "element",
+            "expression": "Client"
           }
-        },
-        "derivation": "constraint"
+        ],
+        "differential": {
+          "element": [
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "min": 0,
+              "max": "1"
+            },
+            {
+              "id": "Extension.extension",
+              "path": "Extension.extension",
+              "max": "0"
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://aidbox.app/StructureDefinition/Client/status"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "max": "1",
+              "type": [
+                {
+                  "code": "code"
+                }
+              ],
+              "constraint": [
+                {
+                  "key": "enum-client-status",
+                  "severity": "error",
+                  "human": "status must be one of draft | review | active | rejected",
+                  "expression": "$this.subsetOf('draft' | 'review' | 'active' | 'rejected')"
+                }
+              ]
+            }
+          ]
+        }
       },
       "request": {
         "method": "PUT",
-        "url": "FHIRSchema/client-status"
+        "url": "StructureDefinition/client-status"
       }
     },
     {
@@ -1259,35 +1342,74 @@
     },
     {
       "resource": {
-        "resourceType": "FHIRSchema",
-        "url": "http://aidbox.app/StructureDefinition/FaqPage",
+        "resourceType": "StructureDefinition",
         "id": "FaqPage",
+        "url": "http://aidbox.app/StructureDefinition/FaqPage",
         "name": "FaqPage",
+        "status": "active",
         "kind": "resource",
-        "derivation": "specialization",
+        "abstract": false,
         "type": "FaqPage",
-        "base": "DomainResource",
-        "elements": {
-          "items": {
-            "type": "BackboneElement",
-            "array": true,
-            "elements": {
-              "id": {
-                "type": "string"
-              },
-              "question": {
-                "type": "string"
-              },
-              "answer": {
-                "type": "markdown"
-              }
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        "derivation": "specialization",
+        "differential": {
+          "element": [
+            {
+              "id": "FaqPage",
+              "path": "FaqPage",
+              "min": 0,
+              "max": "*"
+            },
+            {
+              "id": "FaqPage.items",
+              "path": "FaqPage.items",
+              "min": 0,
+              "max": "*",
+              "type": [
+                {
+                  "code": "BackboneElement"
+                }
+              ]
+            },
+            {
+              "id": "FaqPage.items.id",
+              "path": "FaqPage.items.id",
+              "min": 0,
+              "max": "1",
+              "type": [
+                {
+                  "code": "string"
+                }
+              ]
+            },
+            {
+              "id": "FaqPage.items.question",
+              "path": "FaqPage.items.question",
+              "min": 0,
+              "max": "1",
+              "type": [
+                {
+                  "code": "string"
+                }
+              ]
+            },
+            {
+              "id": "FaqPage.items.answer",
+              "path": "FaqPage.items.answer",
+              "min": 0,
+              "max": "1",
+              "type": [
+                {
+                  "code": "markdown"
+                }
+              ]
             }
-          }
+          ]
         }
       },
       "request": {
         "method": "PUT",
-        "url": "FHIRSchema/FaqPage"
+        "url": "StructureDefinition/FaqPage"
       }
     },
     {
@@ -1456,15 +1578,6 @@
       "request": {
         "method": "PUT",
         "url": "AccessPolicy/admin-api-registration-read"
-      }
-    },
-    {
-      "resource": {
-        "source": "https://storage.googleapis.com/aidbox-public/smartbox/all_data.ndjson.gz"
-      },
-      "request": {
-        "method": "POST",
-        "url": "/$load"
       }
     }
   ]
