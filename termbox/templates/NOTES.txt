@@ -12,8 +12,7 @@ API + UI:
 {{- if not .Values.secrets.existingSecretName }}
 
 WARNING: secrets.data.LICENSE is not set — the FHIR API returns 403 without a valid
-license, and this chart's probes httpGet /fhir/metadata, so the pod will never become
-Ready. Get a license and set secrets.data.LICENSE. See
+license. Get a license and set secrets.data.LICENSE. See
 https://www.health-samurai.io/docs/termbox/licensing.
 {{- end }}
 {{- end }}
