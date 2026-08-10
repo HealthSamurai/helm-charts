@@ -4,6 +4,86 @@
   "entry": [
     {
       "resource": {
+        "resourceType": "AccessPolicy",
+        "id": "developer-api-admin-user",
+        "engine": "matcho",
+        "description": "Allow developer-api client to mirror portal-admin Users (created from the Admin Portal) into the sandbox so admins can use its console too (#580)",
+        "matcho": {
+          "client": {
+            "id": "developer-api"
+          },
+          "request-method": {
+            "$one-of": [
+              "get",
+              "put",
+              "delete"
+            ]
+          },
+          "uri": "#^/User/[a-zA-Z0-9._-]+$"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/developer-api-admin-user"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "AccessPolicy",
+        "id": "developer-api-access-policy",
+        "engine": "matcho",
+        "description": "Allow developer-api client to manage per-admin AccessPolicies (admin-*) created with each portal admin (#580)",
+        "matcho": {
+          "client": {
+            "id": "developer-api"
+          },
+          "request-method": {
+            "$one-of": [
+              "get",
+              "put",
+              "delete"
+            ]
+          },
+          "uri": {
+            "$one-of": [
+              "#^/AccessPolicy/admin-[a-zA-Z0-9._-]+$",
+              "#^/fhir/AccessPolicy/admin-[a-zA-Z0-9._-]+$"
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/developer-api-access-policy"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "AccessPolicy",
+        "id": "dev-backend-service-read",
+        "engine": "matcho",
+        "description": "Sandbox: any backend service (bulk-api-client) may read/search the shared synthetic dataset before approval, mirroring dev-smart-app-read (#478)",
+        "matcho": {
+          "client": {
+            "type": "bulk-api-client"
+          },
+          "operation": {
+            "id": {
+              "$one-of": [
+                "FhirRead",
+                "FhirSearch"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/dev-backend-service-read"
+      }
+    },
+    {
+      "resource": {
         "resourceType": "StructureDefinition",
         "id": "client-created-by",
         "url": "http://aidbox.app/StructureDefinition/Client/created-by",
@@ -161,15 +241,6 @@
     },
     {
       "resource": {
-        "source": "https://storage.googleapis.com/aidbox-public/smartbox/all_data.ndjson.gz"
-      },
-      "request": {
-        "method": "POST",
-        "url": "/$load"
-      }
-    },
-    {
-      "resource": {
         "resourceType": "Client",
         "id": "smartbox-developer-portal",
         "first_party": true,
@@ -265,6 +336,25 @@
             }
           }
         }
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/developer-api-identity-provider"
+      },
+      "resource": {
+        "engine": "matcho",
+        "matcho": {
+          "client": {
+            "id": "developer-api"
+          },
+          "request-method": "get",
+          "uri": "#^/IdentityProvider.*"
+        },
+        "description": "Read-only IdentityProvider access for developer API client (backend maps OIDC third-party initiated login iss to an IdP id)",
+        "id": "developer-api-identity-provider",
+        "resourceType": "AccessPolicy"
       }
     },
     {
@@ -805,9 +895,8 @@
         ]
       },
       "request": {
-        "method": "POST",
-        "url": "DocumentReference",
-        "ifNoneExist": "_id=smartbox-tos"
+        "method": "PUT",
+        "url": "DocumentReference/smartbox-tos"
       }
     },
     {
@@ -833,9 +922,8 @@
         ]
       },
       "request": {
-        "method": "POST",
-        "url": "DocumentReference",
-        "ifNoneExist": "_id=smartbox-privacy"
+        "method": "PUT",
+        "url": "DocumentReference/smartbox-privacy"
       }
     },
     {
@@ -881,17 +969,7 @@
         },
         "description": "Admin access to Client resources",
         "id": "developer-role-client",
-        "resourceType": "AccessPolicy",
-        "meta": {
-          "lastUpdated": "2025-12-11T17:05:59.203507Z",
-          "versionId": "2895",
-          "extension": [
-            {
-              "url": "https://aidbox.app/ex/createdAt",
-              "valueInstant": "2025-12-11T17:05:59.203507Z"
-            }
-          ]
-        }
+        "resourceType": "AccessPolicy"
       },
       "request": {
         "method": "PUT",
@@ -907,6 +985,9 @@
         "data": {
           "firstName": "E2E",
           "lastName": "Test",
+          "phone": "+1 555 0100",
+          "companyName": "E2E Health Systems",
+          "companyUrl": "https://e2e.example.com",
           "role": "developer",
           "emailVerified": true
         },
@@ -1017,6 +1098,26 @@
       "request": {
         "method": "PUT",
         "url": "AccessPolicy/developer-api-audit-event"
+      }
+    },
+    {
+      "resource": {
+        "source": "https://storage.googleapis.com/payerbox-public/developer_data.ndjson.gz"
+      },
+      "request": {
+        "method": "POST",
+        "url": "/$load"
+      }
+    },
+    {
+      "resource": {
+        "fhirUser": {
+          "reference": "Patient/test-pt-1"
+        }
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "User/admin"
       }
     }
   ]
