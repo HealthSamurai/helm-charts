@@ -3,7 +3,7 @@ name: payerbox
 description: >-
   Umbrella chart for the Smartbox payor + ePA stack — fhir-app-portal, interop, prior-auth and two Aidbox instances (admin + sandbox) backed by CloudNativePG.
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "2605"
 home: https://www.health-samurai.io
 maintainers:
