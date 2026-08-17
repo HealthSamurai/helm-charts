@@ -19,7 +19,8 @@ spec:
   parentRefs:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with $route.hostnames }}
+  {{- $hostnames := $route.hostnames | default (list $.Values.host) }}
+  {{- with $hostnames }}
   hostnames:
     {{- tpl (toYaml .) $ | nindent 4 }}
   {{- end }}

@@ -42,6 +42,7 @@ route:
     annotations: {}
     labels: {}
 
+    # Defaults to [.Values.host] when left empty
     hostnames: []
     # - my.domain.tld
     parentRefs: []
