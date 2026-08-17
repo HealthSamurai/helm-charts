@@ -112,6 +112,7 @@ Because rendering happens at every pod start, config changes take effect on the 
 | `aidbox-*.config.BOX_DB_DATABASE` | Database name | `portal` / `sandbox` |
 | `aidbox-*.extraEnvFromSecrets` | Secret(s) with `BOX_LICENSE`, DB creds, client secrets | `[aidbox-admin-env]` / `[aidbox-sandbox-env]` |
 | `aidbox-admin.config.BOX_BOOTSTRAP_FHIR_PACKAGES` | FHIR packages loaded on the **first** boot against an empty database — R4 core, US Core, CARIN BB and the Da Vinci IGs (CRD / DTR / PAS / CDex / PDex / Plan-Net / Drug Formulary). Replaced wholesale when overridden | see `values.yaml` |
+| `aidbox-admin.config.BOX_FHIR_VALIDATION_SKIP_REFERENCE` | Skip reference resolution during validation — required by the interop `$bulk-member-match`, whose match inputs reference resources that are not stored in the box | `true` |
 | `aidbox-admin.config.ADMIN_FRONTEND_URL` | Admin portal URL, substituted into the admin init-bundle | `https://portal.example.com` |
 | `aidbox-sandbox.config.DEVELOPER_FRONTEND_URL` | Developer portal URL, substituted into the sandbox init-bundle | `https://portal-sandbox.example.com` |
 | `aidbox-sandbox.config.ADMIN_AIDBOX_PUBLIC_URL` | Admin Aidbox token issuer (introspector `iss`) | `https://aidbox.example.com` |

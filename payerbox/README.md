@@ -8,7 +8,7 @@ into a single namespace:
 - **Prior Auth** — CRD / DTR / PAS (`prior-auth`)
 - **Two Aidbox FHIR servers** — `aidbox-admin` (production data) and `aidbox-sandbox` (developer/test data)
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2605](https://img.shields.io/badge/AppVersion-2605-informational?style=flat-square)
+![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2605](https://img.shields.io/badge/AppVersion-2605-informational?style=flat-square)
 
 The chart bundles the [`aidbox`](https://healthsamurai.github.io/helm-charts) chart (used twice,
 unchanged) plus the three Smartbox app charts. Installing the published chart is self-contained —
@@ -112,6 +112,7 @@ Because rendering happens at every pod start, config changes take effect on the 
 | `aidbox-*.config.BOX_DB_DATABASE` | Database name | `portal` / `sandbox` |
 | `aidbox-*.extraEnvFromSecrets` | Secret(s) with `BOX_LICENSE`, DB creds, client secrets | `[aidbox-admin-env]` / `[aidbox-sandbox-env]` |
 | `aidbox-admin.config.BOX_BOOTSTRAP_FHIR_PACKAGES` | FHIR packages loaded on the **first** boot against an empty database — R4 core, US Core, CARIN BB and the Da Vinci IGs (CRD / DTR / PAS / CDex / PDex / Plan-Net / Drug Formulary). Replaced wholesale when overridden | see `values.yaml` |
+| `aidbox-admin.config.BOX_FHIR_VALIDATION_SKIP_REFERENCE` | Skip reference resolution during validation — required by the interop `$bulk-member-match`, whose match inputs reference resources that are not stored in the box | `true` |
 | `aidbox-admin.config.ADMIN_FRONTEND_URL` | Admin portal URL, substituted into the admin init-bundle | `https://portal.example.com` |
 | `aidbox-sandbox.config.DEVELOPER_FRONTEND_URL` | Developer portal URL, substituted into the sandbox init-bundle | `https://portal-sandbox.example.com` |
 | `aidbox-sandbox.config.ADMIN_AIDBOX_PUBLIC_URL` | Admin Aidbox token issuer (introspector `iss`) | `https://aidbox.example.com` |
