@@ -7,7 +7,7 @@
 > Important! Starting from version: `0.2.x`, the repo fully switched to the new environment variable naming conventions introduced in Aidbox version: 2503.
 To keep the old naming convention, stick with version in `0.1.x` More information about naming convention you can find [here](https://docs.aidbox.app/reference/settings).
 
-![Version: 0.2.16](https://img.shields.io/badge/Version-0.2.16-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.2.17](https://img.shields.io/badge/Version-0.2.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -91,6 +91,10 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | replicaCount | int | `1` |  |
 | resources.requests.cpu | string | `"500m"` |  |
 | resources.requests.memory | string | `"256Mi"` |  |
+| route | object | `{"main":{"additionalRules":[],"annotations":{},"apiVersion":"gateway.networking.k8s.io/v1","enabled":false,"filters":[],"hostnames":[],"kind":"HTTPRoute","labels":{},"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"parentRefs":[],"sessionPersistence":{},"timeouts":{}}}` | Gateway API routes (HTTPRoute by default). Disabled by default; use instead of ingress when a Gateway API implementation is available. |
+| route.main.apiVersion | string | `"gateway.networking.k8s.io/v1"` | Set the route apiVersion, e.g. gateway.networking.k8s.io/v1 or gateway.networking.k8s.io/v1alpha2 |
+| route.main.enabled | bool | `false` | Enables or disables the route |
+| route.main.kind | string | `"HTTPRoute"` | Set the route kind Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute |
 | securityContext.runAsNonRoot | bool | `true` |  |
 | securityContext.runAsUser | int | `1000` |  |
 | service.annotations | object | `{}` |  |

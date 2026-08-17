@@ -27,6 +27,52 @@ ingress:
     # cert-manager.io/cluster-issuer: letsencrypt
   defaultPath: "/"
 
+# -- Gateway API routes (HTTPRoute by default). Disabled by default; use instead of ingress when a Gateway API implementation is available.
+route:
+  main:
+    # -- Enables or disables the route
+    enabled: false
+
+    # -- Set the route apiVersion, e.g. gateway.networking.k8s.io/v1 or gateway.networking.k8s.io/v1alpha2
+    apiVersion: gateway.networking.k8s.io/v1
+    # -- Set the route kind
+    # Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute
+    kind: HTTPRoute
+
+    annotations: {}
+    labels: {}
+
+    hostnames: []
+    # - my.domain.tld
+    parentRefs: []
+    # - name: my-gateway
+
+    matches:
+      - path:
+          type: PathPrefix
+          value: /
+
+    ## Timeouts define the timeouts that can be configured for an HTTP request.
+    ## Ref. https://gateway-api.sigs.k8s.io/api-types/httproute/#timeouts-optional
+    timeouts: {}
+    # request: 10s
+    # backendRequest: 5s
+
+    ## SessionPersistence defines and configures session persistence for the route rule.
+    ## Ref. https://gateway-api.sigs.k8s.io/geps/gep-1619/
+    sessionPersistence: {}
+    # sessionName: aidbox-session
+    # type: Cookie
+    # absoluteTimeout: 48h
+    # cookieConfig:
+    #   lifetimeType: Permanent
+
+    ## Filters define the filters that are applied to requests that match this rule.
+    filters: []
+
+    ## Additional rules to add to the route
+    additionalRules: []
+
 livenessProbe:
   httpGet:
     path: /health
