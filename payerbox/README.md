@@ -8,7 +8,7 @@ into a single namespace:
 - **Prior Auth** — CRD / DTR / PAS (`prior-auth`)
 - **Two Aidbox FHIR servers** — `aidbox-admin` (production data) and `aidbox-sandbox` (developer/test data)
 
-![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2605](https://img.shields.io/badge/AppVersion-2605-informational?style=flat-square)
+![Version: 0.1.3](https://img.shields.io/badge/Version-0.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2605](https://img.shields.io/badge/AppVersion-2605-informational?style=flat-square)
 
 The chart bundles the [`aidbox`](https://healthsamurai.github.io/helm-charts) chart (used twice,
 unchanged) plus the three Smartbox app charts. Installing the published chart is self-contained —
