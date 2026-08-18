@@ -23,7 +23,7 @@ aidbox-admin:
     BOX_SECURITY_AUDIT_LOG_ENABLED: true
     BOX_SETTINGS_MODE: read-write
     BOX_INIT_BUNDLE: file:///init-bundle/init-bundle.json
-    BOX_BOOTSTRAP_FHIR_PACKAGES: "hl7.fhir.r4.core#4.0.1:hl7.terminology.r4#6.4.0:hl7.fhir.us.core#6.1.0:hl7.fhir.us.carin-bb#2.0.0:hl7.fhir.us.davinci-pdex#2.1.0:hl7.fhir.us.davinci-drug-formulary#2.0.1:hl7.fhir.us.davinci-pdex-plan-net#1.1.0:hl7.fhir.us.davinci-cdex#2.1.0:hl7.fhir.us.davinci-crd#2.1.0:hl7.fhir.us.davinci-dtr#2.1.0:hl7.fhir.us.davinci-pas#2.1.0"
+    BOX_BOOTSTRAP_FHIR_PACKAGES: "hl7.fhir.r4.core#4.0.1:hl7.terminology.r4#6.4.0:hl7.fhir.us.core#6.1.0:hl7.fhir.us.carin-bb#2.1.0:hl7.fhir.us.davinci-pdex#2.1.0:hl7.fhir.us.davinci-drug-formulary#2.0.1:hl7.fhir.us.davinci-pdex-plan-net#1.2.0:hl7.fhir.us.davinci-cdex#2.1.0:hl7.fhir.us.davinci-crd#2.1.0:hl7.fhir.us.davinci-dtr#2.1.0:hl7.fhir.us.davinci-pas#2.1.0"
     BOX_FHIR_NPM_PACKAGE_REGISTRY: https://fs.get-ig.org/pkgs
     JAVA_OPTS: "-XX:MaxRAMPercentage=75"
     # Non-secret value substituted into the init-bundle by the render initContainer below.
