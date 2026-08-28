@@ -945,11 +945,11 @@
         "description": "Admin access to Client resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "Client"
@@ -969,11 +969,11 @@
         "description": "Admin search and read Session resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "Session"
@@ -1001,11 +1001,11 @@
         "description": "Admin access to Organization resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "Organization"
@@ -1025,11 +1025,11 @@
         "description": "Admin read Patient with ORGBAC",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "Patient"
@@ -1059,11 +1059,11 @@
         "description": "Admin read User with ORGBAC",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "User"
@@ -1093,11 +1093,11 @@
         "description": "Admin read Group with ORGBAC",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "Group"
@@ -1127,11 +1127,11 @@
         "description": "Admin manage DocumentReference",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "DocumentReference"
@@ -1160,11 +1160,11 @@
         "description": "Admin access to settings endpoints",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "request": {
             "uri": {
@@ -1198,11 +1198,11 @@
         "description": "Admin access to AwsAccount resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "AwsAccount"
@@ -1222,11 +1222,11 @@
         "description": "Admin access to GcpServiceAccount resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "GcpServiceAccount"
@@ -1246,11 +1246,11 @@
         "description": "Admin search and read AuditEvent resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "AuditEvent"
@@ -1278,11 +1278,11 @@
         "description": "Admin search and read Communication resources",
         "matcho": {
           "user": {
-            "roles": [
-              {
+            "roles": {
+              "$contains": {
                 "type": "admin"
               }
-            ]
+            }
           },
           "params": {
             "resource/type": "Communication"
