@@ -58,6 +58,7 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | extraEnvFromConfigMaps | list | `[]` |  |
 | extraEnvFromSecrets | list | `[]` |  |
 | extraEnvs | list | `[]` |  |
+| extraLabels | object | `{}` | Extra labels applied to the top-level Deployment resource. Rendered with `tpl`, so Helm templates (e.g. {{ .Release.Namespace }}) can be used. |
 | fullnameOverride | string | `""` |  |
 | host | string | `"my.domain.tld"` | Host name Aidbox will be available at |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
