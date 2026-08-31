@@ -46,9 +46,9 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  #  - secretName: mdmbox-tls
-  #    hosts:
+  #  - hosts:
   #      - mdmbox.local
+  #    secretName: mdmbox-tls
 
 resources:
   requests:
