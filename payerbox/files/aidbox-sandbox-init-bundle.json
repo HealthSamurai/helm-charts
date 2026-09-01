@@ -1113,7 +1113,12 @@
       "resource": {
         "fhirUser": {
           "reference": "Patient/test-pt-1"
-        }
+        },
+        "roles": [
+          {
+            "type": "admin"
+          }
+        ]
       },
       "request": {
         "method": "PATCH",
