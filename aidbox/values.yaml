@@ -140,6 +140,9 @@ fullnameOverride: ""
 deploymentAnnotations: {}
 podAnnotations: {}
 podLabels: {}
+# -- labels applied to the top-level Deployment resource.
+# Rendered with `tpl`, so Helm templates (e.g. {{ .Release.Namespace }}) can be used.
+labels: {}
 
 podSecurityContext: {}
   # fsGroup: 2000
