@@ -4,7 +4,7 @@ metadata:
   name: {{ include "aidbox.fullname" . }}
   labels:
     {{- include "aidbox.labels" . | nindent 4 }}
-    {{- with .Values.extraLabels }}
+    {{- with .Values.labels }}
     {{- tpl (toYaml .) $ | nindent 4 }}
     {{- end }}
   {{- with .Values.deploymentAnnotations }}

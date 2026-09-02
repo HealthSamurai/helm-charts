@@ -58,7 +58,6 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | extraEnvFromConfigMaps | list | `[]` |  |
 | extraEnvFromSecrets | list | `[]` |  |
 | extraEnvs | list | `[]` |  |
-| extraLabels | object | `{}` | Extra labels applied to the top-level Deployment resource. Rendered with `tpl`, so Helm templates (e.g. {{ .Release.Namespace }}) can be used. |
 | fullnameOverride | string | `""` |  |
 | host | string | `"my.domain.tld"` | Host name Aidbox will be available at |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
@@ -70,6 +69,7 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | ingress.defaultPath | string | `"/"` |  |
 | ingress.enabled | bool | `true` |  |
 | initContainers | list | `[]` |  |
+| labels | object | `{}` | labels applied to the top-level Deployment resource. Rendered with `tpl`, so Helm templates (e.g. {{ .Release.Namespace }}) can be used. |
 | livenessProbe.failureThreshold | int | `10` |  |
 | livenessProbe.httpGet.path | string | `"/health"` |  |
 | livenessProbe.httpGet.port | string | `"api"` |  |
