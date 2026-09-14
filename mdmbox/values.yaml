@@ -112,8 +112,11 @@ extraEnvFromConfigMaps: []
 # Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode.
 extraEnvFromSecrets: []
 
+# -- Stop the old pod before starting its replacement so continuous bulk matching
+# processes can resume at startup. Recreate causes a brief service interruption.
 updateStrategy:
-  type: RollingUpdate
+  type: Recreate
+  rollingUpdate: null
 
 # -- mdmbox config rendered into the chart's own ConfigMap.
 # Holds mdmbox-specific env vars (license, JAVA_OPTS, …) and, in

@@ -68,4 +68,23 @@ helm upgrade --install mdmbox healthsamurai/mdmbox \
 
 The release lands in the `mdmbox` namespace, creating it if needed.
 
+### Continuous bulk matching and upgrades
+
+Continuous bulk matching requires a single MDMbox replica with autoscaling disabled. Processes resume once at application startup; a replacement that starts while the old pod owns a process does not retry taking ownership after that pod exits.
+
+The chart defaults to `Recreate`, which stops the old pod before starting its replacement. This lets active processes resume automatically, with a brief interruption of the MDMbox API and admin UI during upgrades. The database sync triggers continue collecting inserted records while MDMbox is down.
+
+When upgrading an existing release, update any saved strategy overrides, including values retained by `--reuse-values`:
+
+```yaml
+replicaCount: 1
+autoscaling:
+  enabled: false
+updateStrategy:
+  type: Recreate
+  rollingUpdate: null
+```
+
+For a restart managed outside this chart, stop the old instance completely before starting the replacement. Rolling updates and automatic process ownership handover are not supported for continuous bulk matching.
+
 {{ template "chart.valuesSection" . }}

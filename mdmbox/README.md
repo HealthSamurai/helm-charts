@@ -2,7 +2,7 @@
 
 Probabilistic record matching service by Health Samurai
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -68,6 +68,25 @@ helm upgrade --install mdmbox healthsamurai/mdmbox \
 
 The release lands in the `mdmbox` namespace, creating it if needed.
 
+### Continuous bulk matching and upgrades
+
+Continuous bulk matching requires a single MDMbox replica with autoscaling disabled. Processes resume once at application startup; a replacement that starts while the old pod owns a process does not retry taking ownership after that pod exits.
+
+The chart defaults to `Recreate`, which stops the old pod before starting its replacement. This lets active processes resume automatically, with a brief interruption of the MDMbox API and admin UI during upgrades. The database sync triggers continue collecting inserted records while MDMbox is down.
+
+When upgrading an existing release, update any saved strategy overrides, including values retained by `--reuse-values`:
+
+```yaml
+replicaCount: 1
+autoscaling:
+  enabled: false
+updateStrategy:
+  type: Recreate
+  rollingUpdate: null
+```
+
+For a restart managed outside this chart, stop the old instance completely before starting the replacement. Rolling updates and automatic process ownership handover are not supported for continuous bulk matching.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -125,6 +144,6 @@ The release lands in the `mdmbox` namespace, creating it if needed.
 | startupProbe.initialDelaySeconds | int | `20` |  |
 | startupProbe.periodSeconds | int | `5` |  |
 | tolerations | list | `[]` |  |
-| updateStrategy.type | string | `"RollingUpdate"` |  |
+| updateStrategy | object | `{"rollingUpdate":null,"type":"Recreate"}` | Stop the old pod before starting its replacement so continuous bulk matching processes can resume at startup. Recreate causes a brief service interruption. |
 | volumeMounts | list | `[]` |  |
 | volumes | list | `[]` |  |
