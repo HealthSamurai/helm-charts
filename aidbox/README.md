@@ -110,6 +110,7 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | startupProbe.initialDelaySeconds | int | `20` |  |
 | startupProbe.periodSeconds | int | `5` |  |
 | tolerations | list | `[]` |  |
+| topologySpreadConstraints | list | `[]` |  |
 | updateStrategy.type | string | `"RollingUpdate"` |  |
 | volumeMounts | list | `[]` |  |
 | volumes | list | `[]` |  |
