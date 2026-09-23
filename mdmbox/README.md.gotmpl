@@ -6,6 +6,8 @@
 
 ## Installation
 
+The default image is `healthsamurai/mdmbox:2608`. This monthly tag follows the highest published minor for August 2026. To pin a release, set `image.tag` to an exact published `YYMM.N` tag or set `image.digest`. The default `image.pullPolicy: Always` checks for an updated image whenever a pod starts; restart the deployment to pick up a newer monthly image. `edge` is a development image and must be selected explicitly.
+
 mdmbox needs a PostgreSQL 14+ database. The chart supports two deployment modes:
 
 - **Standalone** — mdmbox runs on its own. You point it at any PostgreSQL.

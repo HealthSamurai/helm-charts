@@ -2,9 +2,11 @@
 
 Probabilistic record matching service by Health Samurai
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2608](https://img.shields.io/badge/AppVersion-2608-informational?style=flat-square)
 
 ## Installation
+
+The default image is `healthsamurai/mdmbox:2608`. This monthly tag follows the highest published minor for August 2026. To pin a release, set `image.tag` to an exact published `YYMM.N` tag or set `image.digest`. The default `image.pullPolicy: Always` checks for an updated image whenever a pod starts; restart the deployment to pick up a newer monthly image. `edge` is a development image and must be selected explicitly.
 
 mdmbox needs a PostgreSQL 14+ database. The chart supports two deployment modes:
 
@@ -84,9 +86,9 @@ The release lands in the `mdmbox` namespace, creating it if needed.
 | extraEnvFromSecrets | list | `[]` | Names of additional Secrets loaded into the pod via envFrom. Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode. |
 | fullnameOverride | string | `""` |  |
 | image.digest | string | `""` |  |
-| image.pullPolicy | string | `"IfNotPresent"` |  |
+| image.pullPolicy | string | `"Always"` | Check the registry when a pod starts so monthly tags pick up their latest minor. |
 | image.repository | string | `"healthsamurai/mdmbox"` |  |
-| image.tag | string | `""` |  |
+| image.tag | string | `""` | Overrides appVersion. Use YYMM for a monthly release or YYMM.N for an exact release. |
 | imagePullSecrets | list | `[]` |  |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |
