@@ -2,7 +2,9 @@ replicaCount: 1
 
 image:
   repository: healthsamurai/mdmbox
-  pullPolicy: IfNotPresent
+  # -- Check the registry when a pod starts so monthly tags pick up their latest minor.
+  pullPolicy: Always
+  # -- Overrides appVersion. Use YYMM for a monthly release or YYMM.N for an exact release.
   tag: ""
   digest: ""
 
