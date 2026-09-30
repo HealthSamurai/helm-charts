@@ -114,8 +114,15 @@ extraEnvFromConfigMaps: []
 # Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode.
 extraEnvFromSecrets: []
 
+# -- Deployment strategy. Continuous matching requires compatible handover-capable application versions for RollingUpdate; otherwise use Recreate with rollingUpdate: null.
 updateStrategy:
   type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# -- Time in seconds allowed for workers and other application components to stop before forced termination.
+terminationGracePeriodSeconds: 60
 
 # -- mdmbox config rendered into the chart's own ConfigMap.
 # Holds mdmbox-specific env vars (license, JAVA_OPTS, …) and, in

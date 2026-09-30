@@ -2,7 +2,7 @@
 
 Probabilistic record matching service by Health Samurai
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2608](https://img.shields.io/badge/AppVersion-2608-informational?style=flat-square)
+![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2608](https://img.shields.io/badge/AppVersion-2608-informational?style=flat-square)
 
 ## Installation
 
@@ -70,6 +70,32 @@ helm upgrade --install mdmbox healthsamurai/mdmbox \
 
 The release lands in the `mdmbox` namespace, creating it if needed.
 
+## Continuous matching upgrades
+
+Use one permanent replica with autoscaling disabled. For application versions supporting continuous matching handover, the chart's `RollingUpdate` strategy allows one replacement pod and keeps the old pod available until the replacement is ready. The replacement automatically resumes matching after the old owner stops. Matching briefly pauses during handover; database insert capture continues. API and admin UI commands can be handled by either instance.
+
+```yaml
+replicaCount: 1
+autoscaling:
+  enabled: false
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+terminationGracePeriodSeconds: 60
+```
+
+Both application versions must support handover and their database migrations must allow overlap. This chart does not upgrade an application's recovery protocol. The default `2608` image predates handover support: keep the following values when using continuous matching with an older image, upgrading from one, or rolling back to one. Also use them for incompatible database migrations:
+
+```yaml
+updateStrategy:
+  type: Recreate
+  rollingUpdate: null
+```
+
+Switch to rolling updates only after installing a handover-capable version. Update any retained Helm overrides, including values kept by `helm upgrade --reuse-values`. Size PostgreSQL's connection budget for both pods during overlap, and increase `terminationGracePeriodSeconds` if application shutdown needs longer. Permanent multiple replicas and autoscaling are outside this continuous matching deployment contract. See [Continuous matching deployment requirements](https://www.health-samurai.io/docs/mdmbox/continuous-matching#deployment-and-upgrades).
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -126,7 +152,8 @@ The release lands in the `mdmbox` namespace, creating it if needed.
 | startupProbe.httpGet.port | string | `"main"` |  |
 | startupProbe.initialDelaySeconds | int | `20` |  |
 | startupProbe.periodSeconds | int | `5` |  |
+| terminationGracePeriodSeconds | int | `60` | Time in seconds allowed for workers and other application components to stop before forced termination. |
 | tolerations | list | `[]` |  |
-| updateStrategy.type | string | `"RollingUpdate"` |  |
+| updateStrategy | object | `{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}` | Deployment strategy. Continuous matching requires compatible handover-capable application versions for RollingUpdate; otherwise use Recreate with rollingUpdate: null. |
 | volumeMounts | list | `[]` |  |
 | volumes | list | `[]` |  |
