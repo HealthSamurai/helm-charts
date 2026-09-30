@@ -107,22 +107,24 @@ aidboxConfigMap: ""
 # For standalone, use extraEnvFromSecrets to mount your own Secret.
 aidboxSecret: ""
 
-# -- Names of additional ConfigMaps loaded into the pod via envFrom.
+# -- Names of additional ConfigMaps loaded via envFrom after config and the
+# Aidbox sources. Later sources override earlier sources with the same key.
 extraEnvFromConfigMaps: []
 
-# -- Names of additional Secrets loaded into the pod via envFrom.
-# Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode.
+# -- Names of additional Secrets loaded last via envFrom, in list order.
+# Use for MDMBOX_LICENSE, MDMBOX_ADMIN_PASSWORD, MDMBOX_API_CLIENT_SECRET,
+# and database credentials when not supplied by aidboxSecret.
 extraEnvFromSecrets: []
 
 updateStrategy:
   type: RollingUpdate
 
-# -- mdmbox config rendered into the chart's own ConfigMap.
-# Holds mdmbox-specific env vars (license, JAVA_OPTS, …) and, in
-# standalone mode, non-secret BOX_DB_* values (BOX_DB_HOST/PORT/DATABASE).
-# Do NOT put credentials here — use extraEnvFromSecrets instead.
-# MDMBOX_HTTP_PORT is injected from .Values.service.port in deployment.yaml
-# (single source of truth).
+# -- Non-secret MDMbox environment variables rendered into the chart's ConfigMap
+# (for example JAVA_OPTS, MDMBOX_LOG_LEVEL, MDMBOX_DB_* and MDMBOX_BULK_DB_*).
+# Non-secret BOX_DB_* values can also be supplied here for standalone deployments.
+# Use extraEnvFromSecrets for the license and credentials. Aidbox and extra
+# envFrom sources override duplicate keys from this ConfigMap.
+# MDMBOX_HTTP_PORT is set explicitly from service.port and overrides envFrom.
 config:
   JAVA_OPTS: "-XX:MaxRAMPercentage=75"
 

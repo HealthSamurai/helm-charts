@@ -15,19 +15,81 @@ mdmbox needs a PostgreSQL 14+ database. The chart supports two deployment modes:
 
 The chart itself does not provision PostgreSQL — bring your own (managed service, an in-cluster operator, or the [bitnami/postgresql](https://artifacthub.io/packages/helm/bitnami/postgresql) chart).
 
-Obtain an mdmbox [license](https://www.health-samurai.io/docs/aidbox/overview/aidbox-user-portal/licenses) from Health Samurai before installing.
+MDMbox requires an active license for API access. For production, obtain a license JWT from the Aidbox portal and supply `MDMBOX_LICENSE` through a Secret. For local development, leave it unset, open MDMbox after installation, and select **Continue with Aidbox account** to activate through the browser. The browser-issued license is stored in the database and reused after restarts. See [License configuration](https://www.health-samurai.io/docs/mdmbox/config-reference#license).
 
-### Common: license and mdmbox config
+### MDMbox-specific configuration
 
-mdmbox-specific environment variables (license, `JAVA_OPTS`, …) go under `config:`. The chart renders them into its own `ConfigMap` and mounts it via `envFrom`:
+Non-secret MDMbox environment variables go under `config:`. The chart renders them into its own `ConfigMap` and loads them through `envFrom`:
 
 ```yaml
 config:
-  MDMBOX_LICENSE: <your license string>
   JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+  MDMBOX_DB_MAX_POOL_SIZE: "10"
+  MDMBOX_DB_MIN_IDLE: "1"
+  MDMBOX_BULK_DB_MAX_POOL_SIZE: "12"
+  MDMBOX_BULK_DB_MIN_IDLE: "0"
+  MDMBOX_BULK_DB_IDLE_TIMEOUT_MS: "60000"
 ```
 
-Do not put database credentials in `config` — its values land in a plain `ConfigMap`. Use a `Secret` referenced via `extraEnvFromSecrets` instead.
+Database connection settings can be shared with Aidbox, while MDMbox connection pools are sized independently. `MDMBOX_DB_*` settings control the main pool for API and admin traffic. `MDMBOX_BULK_DB_*` settings control a separate pool for matching workers; the idle timeout is in milliseconds. Include both pools when sizing PostgreSQL's connection limit.
+
+For images that support `MDMBOX_LOG_LEVEL`, set the application log level without adding JVM options:
+
+```yaml
+config:
+  MDMBOX_LOG_LEVEL: "debug"
+```
+
+Accepted levels are `trace`, `debug`, `info`, `warn`, `error`, and `off`, case-insensitively. An empty or unsupported value prevents startup. When unset, existing log settings remain effective (normally `info`). This setting requires an MDMbox image with support for the variable; updating the chart alone does not add it, and older images ignore it. Separate stdout streams configured through `BOX_OBSERVABILITY_STDOUT_LOG_LEVEL`, `BOX_OBSERVABILITY_STDOUT_PRETTY_LOG_LEVEL`, or `BOX_OBSERVABILITY_STDOUT_GOOGLE_LOG_LEVEL` remain independently controlled.
+
+See the [Configuration reference](https://www.health-samurai.io/docs/mdmbox/config-reference) for the full environment variable list, defaults, and accepted values, including:
+
+- Authentication: `MDMBOX_AUTH_ENABLED` (enabled by default), `MDMBOX_ADMIN_ID` / `MDMBOX_ADMIN_PASSWORD`, and `MDMBOX_API_CLIENT_ID` / `MDMBOX_API_CLIENT_SECRET`.
+- Matching and FHIR: `MDMBOX_MATCH_DEFAULT_COUNT`, `MDMBOX_TEFCA_MODE`, and `MDMBOX_DEFAULT_FHIR_RELEASE`.
+- Merge and unmerge algorithms: `MDMBOX_BUILT_IN_ALGORITHMS`, `MDMBOX_ALGORITHM_GIT_URL`, `MDMBOX_ALGORITHM_GIT_REF`, `MDMBOX_ALGORITHM_GIT_USERNAME`, `MDMBOX_ALGORITHM_GIT_TOKEN_FILE`, and `MDMBOX_ALGORITHM_GIT_CA_FILE`. Token and CA file paths must refer to files mounted through `volumes` and `volumeMounts`; `envFrom` does not mount files.
+- HTTP: `MDMBOX_HTTP_HOST`; set the port through `service.port`, which supplies `MDMBOX_HTTP_PORT` for the container and keeps the Service and probes aligned.
+
+### MDMbox secrets
+
+Keep the license and credentials in a Secret, referenced through `extraEnvFromSecrets`. This Secret can be separate from the shared Aidbox database Secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mdmbox-secrets
+  namespace: mdmbox
+type: Opaque
+stringData:
+  MDMBOX_LICENSE: "<license JWT>"
+  MDMBOX_ADMIN_ID: "mdmbox-admin"
+  MDMBOX_ADMIN_PASSWORD: "<admin password>"
+  MDMBOX_API_CLIENT_ID: "mdmbox-api"
+  MDMBOX_API_CLIENT_SECRET: "<API client secret>"
+```
+
+Create the Secret before starting MDMbox, replacing the placeholders and using the Helm release's namespace. Reference its name in your Helm values:
+
+```yaml
+extraEnvFromSecrets:
+  - mdmbox-secrets
+```
+
+The entries above are optional: omit `MDMBOX_LICENSE` for browser activation, and omit a credential pair when using an existing Aidbox User or Client. When bootstrapping credentials, supply both members of each pair. See [Authentication](https://www.health-samurai.io/docs/mdmbox/authentication). Do not put these secret values in `config`, which creates a plain ConfigMap.
+
+### Environment variable precedence
+
+The chart loads environment sources in this order, skipping optional references that are unset:
+
+1. The MDMbox ConfigMap generated from `config`.
+2. `aidboxConfigMap`.
+3. `aidboxSecret`.
+4. `extraEnvFromConfigMaps`, in list order.
+5. `extraEnvFromSecrets`, in list order.
+
+For duplicate variable names, the last source wins. For example, `JAVA_OPTS` in the shared Aidbox ConfigMap replaces `config.JAVA_OPTS`; an MDMbox-specific ConfigMap or Secret in the extra sources can supply the final override. See [Kubernetes environment sources](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#environment-variables).
+
+`MDMBOX_HTTP_PORT` is set explicitly from `service.port` and takes precedence over all `envFrom` sources. Changes to `config` trigger a pod rollout on Helm upgrade. After changing an externally managed ConfigMap or Secret, restart the deployment so containers read the new values.
 
 ### Standalone
 
@@ -35,13 +97,13 @@ Create a `Secret` with the database credentials (and optionally other `BOX_DB_*`
 
 ```yaml
 config:
-  MDMBOX_LICENSE: <license JWT>
   BOX_DB_HOST: postgres
   BOX_DB_PORT: "5432"
   BOX_DB_DATABASE: mdmbox
 
 extraEnvFromSecrets:
   - mdmbox-db   # contains BOX_DB_USER, BOX_DB_PASSWORD
+  - mdmbox-secrets   # contains MDMBOX_LICENSE and optional authentication settings
 ```
 
 ### Alongside Aidbox
@@ -52,8 +114,8 @@ Reuse the `ConfigMap` and `Secret` your Aidbox already has — point the chart a
 aidboxConfigMap: <ConfigMap with BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE>
 aidboxSecret: <Secret with BOX_DB_USER, BOX_DB_PASSWORD>
 
-config:
-  MDMBOX_LICENSE: <license JWT>
+extraEnvFromSecrets:
+  - mdmbox-secrets
 ```
 
 mdmbox and Aidbox then share the same PostgreSQL instance, FHIR data, and engine settings.
@@ -68,6 +130,6 @@ helm upgrade --install mdmbox healthsamurai/mdmbox \
   --values /path/to/values.yaml
 ```
 
-The release lands in the `mdmbox` namespace, creating it if needed.
+The release lands in the `mdmbox` namespace, creating it if needed. All referenced ConfigMaps and Secrets must be available in the release's namespace.
 
 {{ template "chart.valuesSection" . }}
