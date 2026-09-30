@@ -242,6 +242,17 @@ entries:
   mdmbox:
   - apiVersion: v2
     appVersion: "2608"
+    created: "2026-09-30T11:37:23.498038836Z"
+    description: Probabilistic record matching service by Health Samurai
+    digest: 534ed31f97a8b40545ade75d1a41e25467f389d7e40c5fbc03b14356994e59b4
+    icon: https://aidbox.github.io/helm-charts/icon.png?1712669999
+    name: mdmbox
+    type: application
+    urls:
+    - mdmbox-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: "2608"
     created: "2026-09-24T03:52:39.599362995Z"
     description: Probabilistic record matching service by Health Samurai
     digest: a75636f50ae79d2617329f112894b92b6f909ad2c852ae15f61d4e4fb34d360b
@@ -602,4 +613,4 @@ entries:
     urls:
     - termbox-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-24T16:02:40.378163906Z"
+generated: "2026-09-30T11:37:23.498100051Z"
