@@ -2,7 +2,7 @@
 
 Probabilistic record matching service by Health Samurai
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2608](https://img.shields.io/badge/AppVersion-2608-informational?style=flat-square)
+![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2608](https://img.shields.io/badge/AppVersion-2608-informational?style=flat-square)
 
 ## Installation
 
@@ -132,6 +132,21 @@ helm upgrade --install mdmbox healthsamurai/mdmbox \
 
 The release lands in the `mdmbox` namespace, creating it if needed. All referenced ConfigMaps and Secrets must be available in the release's namespace.
 
+## Continuous matching upgrades
+
+During a rolling update, the old and new MDMbox versions run concurrently until the replacement pods are ready. Each model has one matching owner at a time; another instance automatically resumes matching after the owner stops. Matching briefly pauses during handover; database insert capture continues. API and admin UI commands can be handled by any instance.
+
+```yaml
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+terminationGracePeriodSeconds: 60
+```
+
+Size PostgreSQL's connection budget for all pods, including additional pods during an update, and increase `terminationGracePeriodSeconds` if application shutdown needs longer. When scaling down, the remaining pods need enough bulk pool capacity to resume the processes whose owners stop. See [Continuous matching deployment requirements](https://www.health-samurai.io/docs/mdmbox/continuous-matching#deployment-and-upgrades).
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -188,7 +203,8 @@ The release lands in the `mdmbox` namespace, creating it if needed. All referenc
 | startupProbe.httpGet.port | string | `"main"` |  |
 | startupProbe.initialDelaySeconds | int | `20` |  |
 | startupProbe.periodSeconds | int | `5` |  |
+| terminationGracePeriodSeconds | int | `60` | Time in seconds allowed for workers and other application components to stop before forced termination. |
 | tolerations | list | `[]` |  |
-| updateStrategy.type | string | `"RollingUpdate"` |  |
+| updateStrategy | object | `{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}` | Deployment update strategy. |
 | volumeMounts | list | `[]` |  |
 | volumes | list | `[]` |  |

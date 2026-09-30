@@ -116,8 +116,15 @@ extraEnvFromConfigMaps: []
 # and database credentials when not supplied by aidboxSecret.
 extraEnvFromSecrets: []
 
+# -- Deployment update strategy.
 updateStrategy:
   type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# -- Time in seconds allowed for workers and other application components to stop before forced termination.
+terminationGracePeriodSeconds: 60
 
 # -- Non-secret MDMbox environment variables rendered into the chart's ConfigMap
 # (for example JAVA_OPTS, MDMBOX_LOG_LEVEL, MDMBOX_DB_* and MDMBOX_BULK_DB_*).
