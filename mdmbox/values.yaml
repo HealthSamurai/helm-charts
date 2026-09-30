@@ -114,7 +114,7 @@ extraEnvFromConfigMaps: []
 # Use this for BOX_DB_USER / BOX_DB_PASSWORD in standalone mode.
 extraEnvFromSecrets: []
 
-# -- Deployment strategy. Continuous matching requires compatible handover-capable application versions for RollingUpdate; otherwise use Recreate with rollingUpdate: null.
+# -- Deployment update strategy.
 updateStrategy:
   type: RollingUpdate
   rollingUpdate:

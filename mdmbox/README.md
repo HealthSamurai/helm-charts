@@ -143,6 +143,6 @@ Size PostgreSQL's connection budget for all pods, including additional pods duri
 | startupProbe.periodSeconds | int | `5` |  |
 | terminationGracePeriodSeconds | int | `60` | Time in seconds allowed for workers and other application components to stop before forced termination. |
 | tolerations | list | `[]` |  |
-| updateStrategy | object | `{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}` | Deployment strategy. Continuous matching requires compatible handover-capable application versions for RollingUpdate; otherwise use Recreate with rollingUpdate: null. |
+| updateStrategy | object | `{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}` | Deployment update strategy. |
 | volumeMounts | list | `[]` |  |
 | volumes | list | `[]` |  |
