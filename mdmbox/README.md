@@ -72,12 +72,9 @@ The release lands in the `mdmbox` namespace, creating it if needed.
 
 ## Continuous matching upgrades
 
-Use one permanent replica with autoscaling disabled. For application versions supporting continuous matching handover, the chart's `RollingUpdate` strategy allows one replacement pod and keeps the old pod available until the replacement is ready. The replacement automatically resumes matching after the old owner stops. Matching briefly pauses during handover; database insert capture continues. API and admin UI commands can be handled by either instance.
+For application versions supporting continuous matching handover, the chart's `RollingUpdate` configuration keeps existing pods available until their replacements are ready. Each model has one matching owner at a time; another instance automatically resumes matching after the owner stops. Matching briefly pauses during handover; database insert capture continues. API and admin UI commands can be handled by any instance.
 
 ```yaml
-replicaCount: 1
-autoscaling:
-  enabled: false
 updateStrategy:
   type: RollingUpdate
   rollingUpdate:
@@ -94,7 +91,7 @@ updateStrategy:
   rollingUpdate: null
 ```
 
-Switch to rolling updates only after installing a handover-capable version. Update any retained Helm overrides, including values kept by `helm upgrade --reuse-values`. Size PostgreSQL's connection budget for both pods during overlap, and increase `terminationGracePeriodSeconds` if application shutdown needs longer. Permanent multiple replicas and autoscaling are outside this continuous matching deployment contract. See [Continuous matching deployment requirements](https://www.health-samurai.io/docs/mdmbox/continuous-matching#deployment-and-upgrades).
+Switch to rolling updates only after installing a handover-capable version. Update any retained Helm overrides, including values kept by `helm upgrade --reuse-values`. Size PostgreSQL's connection budget for all pods, including additional pods during an update, and increase `terminationGracePeriodSeconds` if application shutdown needs longer. When scaling down, the remaining pods need enough bulk pool capacity to resume the processes whose owners stop. See [Continuous matching deployment requirements](https://www.health-samurai.io/docs/mdmbox/continuous-matching#deployment-and-upgrades).
 
 ## Values
 
