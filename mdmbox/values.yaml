@@ -2,9 +2,9 @@ replicaCount: 1
 
 image:
   repository: healthsamurai/mdmbox
-  # -- Check the registry when a pod starts so monthly tags pick up their latest minor.
+  # -- Check the registry when a pod starts so latest and monthly tags pick up updates.
   pullPolicy: Always
-  # -- Overrides appVersion. Use YYMM for a monthly release or YYMM.N for an exact release.
+  # -- Overrides appVersion (latest by default). Use YYMM for a monthly release or YYMM.N for an exact release.
   tag: ""
   digest: ""
 
@@ -79,7 +79,7 @@ startupProbe:
     port: main
   initialDelaySeconds: 20
   periodSeconds: 5
-  # 90 * 5s = 7.5 min — allows libox bootstrap (FHIR packages download/parse) on cold start
+  # 90 * 5s = 7.5 min — allows MDMbox startup on a cold start
   failureThreshold: 90
 
 autoscaling:
@@ -95,16 +95,15 @@ tolerations: []
 
 affinity: {}
 
-# -- Name of an existing ConfigMap with BOX_DB_* env vars
+# -- Name of an existing Aidbox ConfigMap with BOX_DB_* and BOX_WEB_BASE_URL env vars
 # (e.g. BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE). Optional —
-# convenience hook for the shared-Aidbox scenario where you already
-# have an Aidbox ConfigMap. For standalone deployments leave empty
-# and supply BOX_DB_* via .Values.config and/or extraEnvFromSecrets.
+# convenience hook when you already have an Aidbox ConfigMap. Otherwise,
+# supply the shared settings through config and extraEnvFromSecrets.
 aidboxConfigMap: ""
 
 # -- Name of an existing Secret with BOX_DB_USER, BOX_DB_PASSWORD.
 # Optional — same shared-Aidbox convenience as aidboxConfigMap.
-# For standalone, use extraEnvFromSecrets to mount your own Secret.
+# Otherwise, use extraEnvFromSecrets to load your database credentials.
 aidboxSecret: ""
 
 # -- Names of additional ConfigMaps loaded via envFrom after config and the
@@ -128,7 +127,8 @@ terminationGracePeriodSeconds: 60
 
 # -- Non-secret MDMbox environment variables rendered into the chart's ConfigMap
 # (for example JAVA_OPTS, MDMBOX_LOG_LEVEL, MDMBOX_DB_* and MDMBOX_BULK_DB_*).
-# Non-secret BOX_DB_* values can also be supplied here for standalone deployments.
+# Non-secret BOX_DB_* values for the shared Aidbox database can also be supplied here.
+# BOX_WEB_BASE_URL is required at runtime; reuse it from aidboxConfigMap or supply it here.
 # Use extraEnvFromSecrets for the license and credentials. Aidbox and extra
 # envFrom sources override duplicate keys from this ConfigMap.
 # MDMBOX_HTTP_PORT is set explicitly from service.port and overrides envFrom.
