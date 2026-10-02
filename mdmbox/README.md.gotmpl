@@ -20,7 +20,6 @@ Non-secret MDMbox environment variables go under `config:`. The chart renders th
 
 ```yaml
 config:
-  MDMBOX_AIDBOX_URL: "https://aidbox.example.com"
   JAVA_OPTS: "-XX:MaxRAMPercentage=75"
   MDMBOX_DB_MAX_POOL_SIZE: "10"
   MDMBOX_DB_MIN_IDLE: "1"
@@ -29,7 +28,9 @@ config:
   MDMBOX_BULK_DB_IDLE_TIMEOUT_MS: "60000"
 ```
 
-Replace `https://aidbox.example.com` with the public base URL of your Aidbox service. `MDMBOX_AIDBOX_URL` is required and has no runtime default; an unset, empty, or invalid value prevents MDMbox startup. Use an absolute HTTP(S) URL without a query or fragment; a deployment path is supported. MDMbox uses it for the **Activate Aidbox** link and `fullUrl` values in `$match` and `$referencing` results. It does not configure the database connection. You can also supply the variable through an existing `envFrom` source; Helm does not inspect the contents of those external ConfigMaps and Secrets. See [Aidbox URL configuration](https://www.health-samurai.io/docs/mdmbox/config-reference#aidbox-url).
+MDMbox reads Aidbox's public base URL from the same `BOX_WEB_BASE_URL` variable. Reusing `aidboxConfigMap` supplies it automatically when present there; no separate MDMbox URL variable is needed. If you supply settings directly, set `config.BOX_WEB_BASE_URL` to the same address used by Aidbox, for example `https://aidbox.example.com`. The deprecated `AIDBOX_BASE_URL` alias is also accepted; `BOX_WEB_BASE_URL` takes precedence when both are present.
+
+The address is required at runtime and has no default; an unset, empty, or invalid value prevents MDMbox startup. Use an absolute HTTP(S) URL without a query or fragment; a deployment path is supported. MDMbox uses it for the **Activate Aidbox** link and `fullUrl` values in `$match` and `$referencing` results. It does not configure the database connection. Helm does not inspect the contents of externally managed ConfigMaps and Secrets. See [Aidbox URL configuration](https://www.health-samurai.io/docs/mdmbox/config-reference#aidbox-url).
 
 Database connection settings can be shared with Aidbox, while MDMbox connection pools are sized independently. `MDMBOX_DB_*` settings control the main pool for API and admin traffic. `MDMBOX_BULK_DB_*` settings control a separate pool for matching workers; the idle timeout is in milliseconds. Include both pools when sizing PostgreSQL's connection limit.
 
@@ -97,7 +98,7 @@ Create a `Secret` with the database credentials (and optionally other `BOX_DB_*`
 
 ```yaml
 config:
-  MDMBOX_AIDBOX_URL: "https://aidbox.example.com"
+  BOX_WEB_BASE_URL: "https://aidbox.example.com"
   BOX_DB_HOST: postgres
   BOX_DB_PORT: "5432"
   BOX_DB_DATABASE: aidbox
@@ -109,13 +110,10 @@ extraEnvFromSecrets:
 
 ### Alongside Aidbox
 
-Reuse the `ConfigMap` and `Secret` your Aidbox already has — point the chart at them via `aidboxConfigMap` / `aidboxSecret`. They are loaded into the pod via `envFrom`:
+Reuse the `ConfigMap` and `Secret` your Aidbox already has — point the chart at them via `aidboxConfigMap` / `aidboxSecret`. Include the public `BOX_WEB_BASE_URL` along with the shared database settings in the ConfigMap. They are loaded into the pod via `envFrom`:
 
 ```yaml
-config:
-  MDMBOX_AIDBOX_URL: "https://aidbox.example.com"
-
-aidboxConfigMap: <ConfigMap with BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE>
+aidboxConfigMap: <ConfigMap with BOX_DB_HOST, BOX_DB_PORT, BOX_DB_DATABASE, BOX_WEB_BASE_URL>
 aidboxSecret: <Secret with BOX_DB_USER, BOX_DB_PASSWORD>
 
 extraEnvFromSecrets:
