@@ -1579,6 +1579,161 @@
         "method": "PUT",
         "url": "AccessPolicy/admin-api-registration-read"
       }
+    },
+    {
+      "resource": {
+        "resourceType": "Client",
+        "id": "interop-app",
+        "secret": "${INTEROP_APP_CLIENT_SECRET}",
+        "grant_types": [
+          "basic"
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Client/interop-app"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "AccessPolicy",
+        "id": "allow-interop-app",
+        "engine": "allow",
+        "link": [
+          {
+            "reference": "Client/interop-app"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/allow-interop-app"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Group-active",
+        "url": "http://hl7.org/fhir/SearchParameter/Group-active",
+        "name": "active",
+        "status": "active",
+        "description": "Whether the group is active",
+        "code": "active",
+        "base": [
+          "Group"
+        ],
+        "type": "token",
+        "expression": "Group.active"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/Group-active"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Coverage-subscriber-id",
+        "url": "http://hl7.org/fhir/SearchParameter/Coverage-subscriber-id",
+        "name": "subscriber-id",
+        "status": "active",
+        "description": "Subscriber ID on the coverage",
+        "code": "subscriber-id",
+        "base": [
+          "Coverage"
+        ],
+        "type": "token",
+        "expression": "Coverage.subscriberId"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/Coverage-subscriber-id"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-type",
+        "url": "http://hl7.org/fhir/SearchParameter/Consent-provision-type",
+        "name": "provision-type",
+        "status": "active",
+        "description": "Type of consent provision (deny or permit)",
+        "code": "provision-type",
+        "base": [
+          "Consent"
+        ],
+        "type": "token",
+        "expression": "Consent.provision.type"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/Consent-provision-type"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Group-period-end",
+        "url": "http://hl7.org/fhir/SearchParameter/Group-period-end",
+        "name": "period-end",
+        "status": "active",
+        "description": "End of a Group characteristic's period; used for expiration-based cleanup",
+        "code": "period-end",
+        "base": [
+          "Group"
+        ],
+        "type": "date",
+        "expression": "Group.characteristic.period.end"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/Group-period-end"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Client",
+        "id": "prior-auth-app",
+        "secret": "${PRIOR_AUTH_APP_CLIENT_SECRET}",
+        "grant_types": [
+          "basic"
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Client/prior-auth-app"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "AccessPolicy",
+        "id": "allow-prior-auth-app",
+        "engine": "allow",
+        "link": [
+          {
+            "reference": "Client/prior-auth-app"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/allow-prior-auth-app"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "AccessPolicy",
+        "id": "public-cds-discovery",
+        "engine": "matcho",
+        "matcho": {
+          "uri": "/cds-services",
+          "request-method": "get"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "AccessPolicy/public-cds-discovery"
+      }
     }
   ]
 }
