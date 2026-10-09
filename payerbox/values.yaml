@@ -23,7 +23,7 @@ aidbox-admin:
     BOX_SECURITY_AUDIT_LOG_ENABLED: true
     BOX_SETTINGS_MODE: read-write
     BOX_INIT_BUNDLE: file:///init-bundle/init-bundle.json
-    BOX_BOOTSTRAP_FHIR_PACKAGES: "hl7.fhir.r4.core#4.0.1:hl7.terminology.r4#6.4.0:hl7.fhir.us.core#6.1.0:hl7.fhir.us.carin-bb#2.1.0:hl7.fhir.us.davinci-pdex#2.1.0:hl7.fhir.us.davinci-drug-formulary#2.1.0:hl7.fhir.us.davinci-pdex-plan-net#1.2.0:hl7.fhir.us.davinci-cdex#2.1.0:hl7.fhir.us.davinci-crd#2.1.0:hl7.fhir.us.davinci-dtr#2.1.0:hl7.fhir.us.davinci-pas#2.1.0"
+    BOX_BOOTSTRAP_FHIR_PACKAGES: "hl7.fhir.r4.core#4.0.1:hl7.terminology.r4#6.4.0:hl7.fhir.us.core#6.1.0:hl7.fhir.us.carin-bb#2.1.0:hl7.fhir.us.davinci-pdex#2.1.0:hl7.fhir.us.davinci-drug-formulary#2.1.0:hl7.fhir.us.davinci-pdex-plan-net#1.2.0:hl7.fhir.us.davinci-hrex#1.2.0:hl7.fhir.us.davinci-crd#2.1.0:hl7.fhir.us.davinci-dtr#2.1.0:hl7.fhir.us.davinci-pas#2.1.0:hl7.fhir.us.davinci-cdex#2.1.0"
     BOX_FHIR_NPM_PACKAGE_REGISTRY: https://fs.get-ig.org/pkgs
     JAVA_OPTS: "-XX:MaxRAMPercentage=75"
     # Non-secret value substituted into the init-bundle by the render initContainer below.
@@ -51,13 +51,19 @@ aidbox-admin:
     image: busybox:1.36
     command: [ "/bin/sh", "-c" ]
     args:
-    - 'sed -e "s|\${ADMIN_FRONTEND_URL}|${ADMIN_FRONTEND_URL}|g" -e "s|\${ADMIN_API_CLIENT_SECRET}|${ADMIN_API_CLIENT_SECRET}|g" /init-bundle-src/init-bundle.json > /init-bundle/init-bundle.json'
+    - 'sed -e "s|\${ADMIN_FRONTEND_URL}|${ADMIN_FRONTEND_URL}|g" -e "s|\${ADMIN_API_CLIENT_SECRET}|${ADMIN_API_CLIENT_SECRET}|g" -e "s|\${INTEROP_APP_CLIENT_SECRET}|${INTEROP_APP_CLIENT_SECRET}|g" -e "s|\${PRIOR_AUTH_APP_CLIENT_SECRET}|${PRIOR_AUTH_APP_CLIENT_SECRET}|g" /init-bundle-src/init-bundle.json > /init-bundle/init-bundle.json'
     envFrom:
     - configMapRef: { name: aidbox-admin } # non-secret URLs from .config above
     env:
     - name: ADMIN_API_CLIENT_SECRET
       valueFrom:
         secretKeyRef: { name: aidbox-admin-env, key: ADMIN_API_CLIENT_SECRET }
+    - name: INTEROP_APP_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef: { name: aidbox-admin-env, key: INTEROP_APP_CLIENT_SECRET }
+    - name: PRIOR_AUTH_APP_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef: { name: aidbox-admin-env, key: PRIOR_AUTH_APP_CLIENT_SECRET }
     volumeMounts:
     - { name: init-bundle-src, mountPath: /init-bundle-src }
     - { name: init-bundle, mountPath: /init-bundle }
@@ -98,7 +104,7 @@ aidbox-sandbox:
     # Non-secret values substituted into the init-bundle by the render initContainer below.
     DEVELOPER_FRONTEND_URL: https://portal-sandbox.example.com # override per environment
     ADMIN_AIDBOX_PUBLIC_URL: https://aidbox.example.com # admin Aidbox token issuer (introspector iss) — override
-    AIDBOX_ADMIN_URL: https://aidbox.example.com
+    AIDBOX_ADMIN_URL: http://aidbox-admin-api # in-cluster admin Aidbox (introspector jwks_uri) — usually no override
   extraEnvFromSecrets:
   - aidbox-sandbox-env
   # See aidbox-admin above — same sed render pattern.

@@ -8,34 +8,90 @@ into a single namespace:
 - **Prior Auth** — CRD / DTR / PAS (`prior-auth`)
 - **Two Aidbox FHIR servers** — `aidbox-admin` (production data) and `aidbox-sandbox` (developer/test data)
 
-![Version: 0.1.6](https://img.shields.io/badge/Version-0.1.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2605](https://img.shields.io/badge/AppVersion-2605-informational?style=flat-square)
+![Version: 0.1.7](https://img.shields.io/badge/Version-0.1.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2605](https://img.shields.io/badge/AppVersion-2605-informational?style=flat-square)
 
 The chart bundles the [`aidbox`](https://healthsamurai.github.io/helm-charts) chart (used twice,
 unchanged) plus the three Smartbox app charts. Installing the published chart is self-contained —
 all subcharts are vendored into the package.
 
-## What the chart does and does NOT create
+## Installation — step by step
 
-It deploys **only the applications and the two Aidbox instances**. By design it does **not**
-provision PostgreSQL or any Secret — those are infrastructure concerns that vary per
-cloud/customer. Provision them first; see **[PREREQUISITES.md](./PREREQUISITES.md)**.
+The chart deploys **only the applications and the two Aidbox instances**. It does **not** create
+PostgreSQL or any Secret — you provision those first. Do the steps in order: **if you skip
+step 2, the pods will not start.**
 
-| You provide (before install) | Why |
+| Step | What you do | Details |
+|---|---|---|
+| **1** | Install the cluster add-ons: External Secrets Operator, CloudNativePG, an ingress controller (and/or Gateway API), cert-manager + a `ClusterIssuer` | [PREREQUISITES §1](./PREREQUISITES.md#1-operators--controllers) |
+| **2** | **Create 6 Secrets containing 23 keys — every key is required** | [below](#step-2--create-the-secrets) + [PREREQUISITES §2](./PREREQUISITES.md#2-secrets) |
+| **3** | Create PostgreSQL with two databases, `portal` and `sandbox` | [PREREQUISITES §3](./PREREQUISITES.md#3-postgresql-cloudnativepg) |
+| **4** | Write your `values.yaml` (hostnames and public URLs) | [below](#step-4--write-valuesyaml) |
+| **5** | `helm upgrade --install` | [below](#step-5--install) |
+| **6** | Check that every pod is `Running` | [below](#step-6--verify) |
+
+You also need **two Aidbox licenses** (admin + sandbox) from Health Samurai — they go into the
+Secrets in step 2.
+
+### Step 1 — Install the cluster add-ons
+
+See [PREREQUISITES §1](./PREREQUISITES.md#1-operators--controllers).
+
+### Step 2 — Create the Secrets
+
+> **The chart does not create any Secret.** Each Secret below must exist in the release
+> namespace **with all of its keys** before you install. The left column is the Secret's name;
+> the right column lists the keys that must be **inside** it — you set all of them, not just the
+> Secret name.
+
+| Secret (in namespace `payerbox`) | Keys it must contain — **all required** |
 |---|---|
-| **PostgreSQL** with two databases `portal` + `sandbox` | the two Aidbox instances (a CloudNativePG `Cluster` is the reference; any reachable Postgres works) |
-| **Secrets** — `payerbox-db-credentials`, `aidbox-admin-env`, `aidbox-sandbox-env`, `fhir-app-portal-secrets`, `interop-secrets`, `prior-auth-secrets` | DB creds, Aidbox licenses, and OAuth client secrets — see [PREREQUISITES §3](./PREREQUISITES.md) for the exact keys |
-| **Ingress controller and/or Gateway API**, plus **cert-manager** + a `ClusterIssuer` | external access + TLS for the portals and Aidbox |
-| **Two Aidbox licenses** | Aidbox will not boot without `BOX_LICENSE` |
+| `payerbox-db-credentials` (type `kubernetes.io/basic-auth`) | `username`, `password` |
+| `aidbox-admin-env` | `BOX_LICENSE`, `BOX_ADMIN_PASSWORD`, `BOX_ROOT_CLIENT_SECRET`, `BOX_DB_USER`, `BOX_DB_PASSWORD`, `ADMIN_API_CLIENT_SECRET`, `INTEROP_APP_CLIENT_SECRET`, `PRIOR_AUTH_APP_CLIENT_SECRET` |
+| `aidbox-sandbox-env` | `BOX_LICENSE`, `BOX_ADMIN_PASSWORD`, `BOX_ROOT_CLIENT_SECRET`, `BOX_DB_USER`, `BOX_DB_PASSWORD`, `DEVELOPER_API_CLIENT_SECRET` |
+| `fhir-app-portal-secrets` | `SESSION_SECRET`, `ADMIN_API_CLIENT_SECRET`, `DEVELOPER_API_CLIENT_SECRET` |
+| `interop-secrets` | `AIDBOX_CLIENT_SECRET`, `AIDBOX_APP_SECRET` |
+| `prior-auth-secrets` | `AIDBOX_CLIENT_SECRET`, `AIDBOX_APP_SECRET` |
 
-## Installation
+Several values are shared between Secrets and **must be identical** (e.g. the DB password, or
+`ADMIN_API_CLIENT_SECRET` in both `aidbox-admin-env` and `fhir-app-portal-secrets`).
+[PREREQUISITES §2](./PREREQUISITES.md#2-secrets) explains what goes into each key and has
+copy-paste setups for **GCP Secret Manager**, **Azure Key Vault** (both via External Secrets
+Operator) and plain `kubectl` for test environments.
 
-```console
-helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
+**Check before you continue.** This prints `MISSING` for any Secret or key that isn't there:
 
-helm upgrade --install payerbox healthsamurai/payerbox \
-  --namespace payerbox --create-namespace \
-  --values /path/to/values.yaml
+```bash
+NS=payerbox
+check() {
+  secret=$1; shift
+  for key in "$@"; do
+    if [ -n "$(kubectl -n "$NS" get secret "$secret" -o "jsonpath={.data.$key}" 2>/dev/null)" ]; then
+      echo "ok       $secret/$key"
+    else
+      echo "MISSING  $secret/$key"
+    fi
+  done
+}
+check payerbox-db-credentials username password
+check aidbox-admin-env BOX_LICENSE BOX_ADMIN_PASSWORD BOX_ROOT_CLIENT_SECRET BOX_DB_USER BOX_DB_PASSWORD \
+  ADMIN_API_CLIENT_SECRET INTEROP_APP_CLIENT_SECRET PRIOR_AUTH_APP_CLIENT_SECRET
+check aidbox-sandbox-env BOX_LICENSE BOX_ADMIN_PASSWORD BOX_ROOT_CLIENT_SECRET BOX_DB_USER BOX_DB_PASSWORD \
+  DEVELOPER_API_CLIENT_SECRET
+check fhir-app-portal-secrets SESSION_SECRET ADMIN_API_CLIENT_SECRET DEVELOPER_API_CLIENT_SECRET
+check interop-secrets AIDBOX_CLIENT_SECRET AIDBOX_APP_SECRET
+check prior-auth-secrets AIDBOX_CLIENT_SECRET AIDBOX_APP_SECRET
 ```
+
+All 23 lines must say `ok`.
+
+### Step 3 — Create PostgreSQL
+
+Two databases, `portal` (admin Aidbox) and `sandbox` (sandbox Aidbox), owned by the role from
+`payerbox-db-credentials`. The chart expects the host `payerbox-db-rw` (a CloudNativePG `Cluster`
+named `payerbox-db`); any reachable Postgres works if you override `aidbox-*.config.BOX_DB_HOST`.
+Example `Cluster`: [PREREQUISITES §3](./PREREQUISITES.md#3-postgresql-cloudnativepg).
+
+### Step 4 — Write `values.yaml`
 
 A minimal `values.yaml` overriding the per-environment hosts and URLs:
 
@@ -65,6 +121,37 @@ fhir-app-portal:
     AIDBOX_DEV_PUBLIC_URL: "https://aidbox-sandbox.example.com"
     DEVELOPER_AIDBOX_PUBLIC_URL: "https://aidbox-sandbox.example.com"
 ```
+
+For ingress vs. Gateway API, see [Routing & TLS](#routing--tls); for all keys, see [Values](#values).
+
+### Step 5 — Install
+
+```console
+helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
+
+helm upgrade --install payerbox healthsamurai/payerbox \
+  --namespace payerbox \
+  --values /path/to/values.yaml
+```
+
+Use the same namespace as the Secrets from step 2 (add `--create-namespace` only if it doesn't
+exist yet).
+
+### Step 6 — Verify
+
+```bash
+kubectl -n payerbox get pods
+```
+
+All pods should reach `Running`. The first Aidbox boot loads the FHIR packages and can take
+several minutes. Common failures:
+
+| Symptom | Likely cause |
+|---|---|
+| `CreateContainerConfigError` | a Secret or a key from step 2 is missing — rerun the check; `kubectl -n payerbox describe pod <pod>` names it |
+| Aidbox `CrashLoopBackOff` | invalid/missing `BOX_LICENSE`, or the DB is unreachable / `BOX_DB_PASSWORD` doesn't match the Postgres role |
+| Portal login fails with 401 | `ADMIN_API_CLIENT_SECRET` / `DEVELOPER_API_CLIENT_SECRET` differ between the Aidbox and portal Secrets |
+| interop / prior-auth keep restarting | `AIDBOX_CLIENT_SECRET` / `AIDBOX_APP_SECRET` missing, or the admin Aidbox isn't up yet |
 
 > A complete, end-to-end walkthrough (PostgreSQL, Secrets, DNS/TLS, verification) is in the
 > Payerbox documentation under **Run Payerbox → Deploy**.
@@ -111,7 +198,7 @@ Because rendering happens at every pod start, config changes take effect on the 
 | `aidbox-*.config.BOX_DB_HOST` | PostgreSQL host | `payerbox-db-rw` (CNPG `-rw` Service of `Cluster/payerbox-db`) |
 | `aidbox-*.config.BOX_DB_DATABASE` | Database name | `portal` / `sandbox` |
 | `aidbox-*.extraEnvFromSecrets` | Secret(s) with `BOX_LICENSE`, DB creds, client secrets | `[aidbox-admin-env]` / `[aidbox-sandbox-env]` |
-| `aidbox-admin.config.BOX_BOOTSTRAP_FHIR_PACKAGES` | FHIR packages loaded on the **first** boot against an empty database — R4 core, US Core, CARIN BB and the Da Vinci IGs (CRD / DTR / PAS / CDex / PDex / Plan-Net / Drug Formulary). Replaced wholesale when overridden | see `values.yaml` |
+| `aidbox-admin.config.BOX_BOOTSTRAP_FHIR_PACKAGES` | FHIR packages loaded on the **first** boot against an empty database — R4 core, HL7 Terminology, US Core, CARIN BB and the Da Vinci IGs (HRex / CRD / DTR / PAS / CDex / PDex / Plan-Net / Drug Formulary). Replaced wholesale when overridden | see `values.yaml` |
 | `aidbox-admin.config.BOX_FHIR_VALIDATION_SKIP_REFERENCE` | Skip reference resolution during validation — required by the interop `$bulk-member-match`, whose match inputs reference resources that are not stored in the box | `true` |
 | `aidbox-admin.config.ADMIN_FRONTEND_URL` | Admin portal URL, substituted into the admin init-bundle | `https://portal.example.com` |
 | `aidbox-sandbox.config.DEVELOPER_FRONTEND_URL` | Developer portal URL, substituted into the sandbox init-bundle | `https://portal-sandbox.example.com` |
