@@ -77,8 +77,15 @@ securityContext:
       - ALL
   seccompProfile:
     type: RuntimeDefault
+# -- Extra Deployment annotations.
+deploymentAnnotations: {}
 # -- Extra pod annotations.
 podAnnotations: {}
+
+# -- Extra pod volumes. e.g. [{name: foo, secret: {secretName: mysecret}}].
+volumes: []
+# -- Extra container volumeMounts. e.g. [{name: foo, mountPath: /etc/foo, readOnly: true}].
+volumeMounts: []
 
 serviceAccount:
   # -- Create a ServiceAccount for the pod.

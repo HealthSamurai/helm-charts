@@ -4,7 +4,7 @@ FHIR Terminology Server by Health Samurai — CodeSystem, ValueSet and ConceptMa
 standard FHIR terminology operations ($lookup, $validate-code, $expand, $translate,
 $subsumes, $find-matches). See the [docs](https://www.health-samurai.io/docs/termbox).
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
 ## Prerequisites
 
@@ -81,6 +81,7 @@ secrets:
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — Termbox never calls the Kubernetes API. |
 | config | object | `{"HTTP_PORT":"3000","LOG_FORMAT":"text","LOG_MIN_LEVEL":"INFO","PG_DATABASE":"termbox","PG_HOST":"postgres","PG_PORT":"5432"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names — see https://www.health-samurai.io/docs/termbox/configuration for the full list (logging, feature toggles, FHIR API version routes, etc.). |
+| deploymentAnnotations | object | `{}` | Extra Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart. |
 | extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
 | extraEnvs | list | `[]` | Extra container env entries (env). |
@@ -118,3 +119,5 @@ secrets:
 | strategy | object | `{"type":"RollingUpdate"}` | Deployment strategy. |
 | terminationGracePeriodSeconds | int | `30` | Grace period for in-flight requests to finish before SIGKILL. |
 | tolerations | list | `[]` | Tolerations for scheduling. |
+| volumeMounts | list | `[]` | Extra container volumeMounts. e.g. [{name: foo, mountPath: /etc/foo, readOnly: true}]. |
+| volumes | list | `[]` | Extra pod volumes. e.g. [{name: foo, secret: {secretName: mysecret}}]. |
