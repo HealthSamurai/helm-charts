@@ -110,6 +110,8 @@ secrets:
     PG_PASSWORD: ""
     LICENSE: ""
 
+# -- Extra container env entries (env).
+extraEnvs: []
 # -- Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart.
 extraEnvFromConfigMaps: []
 # -- Extra Secrets to load env from (envFrom).

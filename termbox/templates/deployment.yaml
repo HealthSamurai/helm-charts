@@ -38,6 +38,10 @@ spec:
             - name: http
               containerPort: {{ .Values.config.HTTP_PORT }}
               protocol: TCP
+          {{- if .Values.extraEnvs }}
+          env:
+            {{- toYaml .Values.extraEnvs | nindent 12 }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "termbox.fullname" . }}-config
