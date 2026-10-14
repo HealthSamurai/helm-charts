@@ -53,6 +53,7 @@ securityContext:
 
 deploymentAnnotations: {}
 podAnnotations: {}
+podLabels: {}
 
 # Extra pod volumes, e.g. [{name: foo, secret: {secretName: mysecret}}].
 volumes: []
