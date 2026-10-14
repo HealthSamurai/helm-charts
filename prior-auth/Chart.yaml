@@ -2,7 +2,7 @@ apiVersion: v2
 name: prior-auth
 description: Smartbox ePA Prior-Authorization service (Da Vinci PAS)
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "2605"
 home: https://www.health-samurai.io
 maintainers:

@@ -51,7 +51,13 @@ securityContext:
   capabilities:
     drop: [ "ALL" ]
 
+deploymentAnnotations: {}
 podAnnotations: {}
+
+# Extra pod volumes, e.g. [{name: foo, secret: {secretName: mysecret}}].
+volumes: []
+# Extra container volumeMounts, e.g. [{name: foo, mountPath: /etc/foo, readOnly: true}].
+volumeMounts: []
 
 serviceAccount:
   create: false
