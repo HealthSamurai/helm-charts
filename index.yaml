@@ -638,6 +638,19 @@ entries:
   prior-auth:
   - apiVersion: v2
     appVersion: "2605"
+    created: "2026-10-14T06:18:46.658737596Z"
+    description: Smartbox ePA Prior-Authorization service (Da Vinci PAS)
+    digest: a6d223bcef81adcb5e863091292da880a5f5130807b9ef1dd7096b52364f950d
+    home: https://www.health-samurai.io
+    maintainers:
+    - name: Health Samurai
+    name: prior-auth
+    type: application
+    urls:
+    - prior-auth-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
+    appVersion: "2605"
     created: "2026-10-14T06:12:38.112302516Z"
     description: Smartbox ePA Prior-Authorization service (Da Vinci PAS)
     digest: 70c1564168742d885a558191c18ad783099d276b9642aa0cc24cdfbe68370409
@@ -732,4 +745,4 @@ entries:
     urls:
     - termbox-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-14T06:12:38.112381733Z"
+generated: "2026-10-14T06:18:46.658821853Z"
