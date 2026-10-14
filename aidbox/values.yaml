@@ -169,6 +169,8 @@ updateStrategy:
 affinity: {}
 tolerations: []
 nodeSelector: {}
+# -- Pod topology spread constraints. When empty, pods are softly spread across
+# zones (`topology.kubernetes.io/zone`, maxSkew 1, ScheduleAnyway) using the chart's selector labels.
 topologySpreadConstraints: []
 
 initContainers: []

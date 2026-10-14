@@ -7,7 +7,7 @@
 > Important! Starting from version: `0.2.x`, the repo fully switched to the new environment variable naming conventions introduced in Aidbox version: 2503.
 To keep the old naming convention, stick with version in `0.1.x` More information about naming convention you can find [here](https://docs.aidbox.app/reference/settings).
 
-![Version: 0.2.20](https://img.shields.io/badge/Version-0.2.20-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.2.21](https://img.shields.io/badge/Version-0.2.21-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -110,7 +110,7 @@ It will install the Aidbox in the `aidbox` namespace, creating that namespace if
 | startupProbe.initialDelaySeconds | int | `20` |  |
 | startupProbe.periodSeconds | int | `5` |  |
 | tolerations | list | `[]` |  |
-| topologySpreadConstraints | list | `[]` |  |
+| topologySpreadConstraints | list | `[]` | Pod topology spread constraints. When empty, pods are softly spread across zones (`topology.kubernetes.io/zone`, maxSkew 1, ScheduleAnyway) using the chart's selector labels. |
 | updateStrategy.type | string | `"RollingUpdate"` |  |
 | volumeMounts | list | `[]` |  |
 | volumes | list | `[]` |  |
