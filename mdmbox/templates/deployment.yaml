@@ -43,9 +43,22 @@ spec:
             - name: main
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
           env:
             - name: MDMBOX_HTTP_PORT
               value: {{ .Values.service.port | quote }}
+            - name: MDMBOX_METRICS_ENABLED
+              value: {{ .Values.metrics.enabled | quote }}
+            {{- if .Values.metrics.enabled }}
+            - name: MDMBOX_METRICS_HOST
+              value: "0.0.0.0"
+            - name: MDMBOX_METRICS_PORT
+              value: {{ .Values.metrics.port | quote }}
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "mdmbox.fullname" . }}
