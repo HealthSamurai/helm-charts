@@ -31,6 +31,15 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 interbox can share a cluster with Aidbox — just a dedicated `interbox` database on
 it (not Aidbox's own database).
 
+**Extension allowlists.** Some managed services refuse `CREATE EXTENSION` until the
+extension is allowlisted. Interbox checks before it migrates: it logs every missing
+extension with the exact `azure.extensions` value to set, exits, and the pod
+crash-loops until that is fixed. On Azure Flexible Server, put `pg_trgm,btree_gist`
+in the `azure.extensions` server parameter, plus Aidbox's (`unaccent`, `pgcrypto`,
+`pg_stat_statements`) if it shares the server. The value replaces the whole list,
+so keep any entries other products need. Full table, roles and the `az` command:
+[PostgreSQL extensions](https://www.health-samurai.io/docs/interbox/ops/sizing#postgresql-extensions).
+
 ## TLS to Postgres
 
 Put `sslmode` in the DSN. Default **`require`** (encrypts in transit — managed PG
