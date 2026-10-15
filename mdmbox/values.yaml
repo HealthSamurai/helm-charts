@@ -36,6 +36,16 @@ service:
   type: ClusterIP
   port: 3000
 
+# -- Prometheus listener and in-cluster Service port. Keep access to this
+# unauthenticated endpoint restricted to trusted monitoring clients.
+metrics:
+  enabled: true
+  port: 9464
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
 ingress:
   enabled: false
   className: ""

@@ -2,7 +2,7 @@
 
 Probabilistic record matching service by Health Samurai
 
-![Version: 0.1.3](https://img.shields.io/badge/Version-0.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Version: 0.1.4](https://img.shields.io/badge/Version-0.1.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 
 ## Installation
 
@@ -49,6 +49,7 @@ See the [Configuration reference](https://www.health-samurai.io/docs/mdmbox/conf
 - Matching and FHIR: `MDMBOX_MATCH_DEFAULT_COUNT`, `MDMBOX_TEFCA_MODE`, and `MDMBOX_DEFAULT_FHIR_RELEASE`.
 - Merge and unmerge algorithms: `MDMBOX_BUILT_IN_ALGORITHMS`, `MDMBOX_ALGORITHM_GIT_URL`, `MDMBOX_ALGORITHM_GIT_REF`, `MDMBOX_ALGORITHM_GIT_USERNAME`, `MDMBOX_ALGORITHM_GIT_TOKEN_FILE`, and `MDMBOX_ALGORITHM_GIT_CA_FILE`. Token and CA file paths must refer to files mounted through `volumes` and `volumeMounts`; `envFrom` does not mount files.
 - HTTP: `MDMBOX_HTTP_HOST`; set the port through `service.port`, which supplies `MDMBOX_HTTP_PORT` for the container and keeps the Service and probes aligned.
+- Monitoring: the chart exposes Prometheus metrics on a separate `metrics` Service port. Set `metrics.serviceMonitor.enabled: true` when using Prometheus Operator and configure `metrics.serviceMonitor.labels` for your Prometheus selector. The metrics endpoint is unauthenticated; restrict access to trusted monitoring clients. Set `metrics.enabled: false` to disable it.
 
 ### MDMbox secrets
 
@@ -180,6 +181,7 @@ Size PostgreSQL's connection budget for all pods, including additional pods duri
 | livenessProbe.httpGet.path | string | `"/healthz"` |  |
 | livenessProbe.httpGet.port | string | `"main"` |  |
 | livenessProbe.periodSeconds | int | `10` |  |
+| metrics | object | `{"enabled":true,"port":9464,"serviceMonitor":{"enabled":false,"interval":"30s","labels":{}}}` | Prometheus listener and in-cluster Service port. Keep access to this unauthenticated endpoint restricted to trusted monitoring clients. |
 | nameOverride | string | `""` |  |
 | nodeSelector | object | `{}` |  |
 | podAnnotations | object | `{}` |  |
