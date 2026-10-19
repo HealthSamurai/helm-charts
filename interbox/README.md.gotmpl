@@ -97,4 +97,22 @@ secrets:
     AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
+## Vertical Pod Autoscaler
+
+Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the
+Deployment; the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+CRDs, recommender and admission controller. The default `updatePolicy.updateMode: Initial` applies the
+recommendation only when a pod is created and never evicts it: interbox runs a single pod
+that builds the workspace on boot, so an eviction is downtime. A new recommendation therefore
+reaches the next pod only (`kubectl rollout restart deployment/interbox` applies it), and until
+VPA has a first one, pods keep plain `resources`. Every setting is a map key, so a
+per-environment overlay can change one (say `maxAllowed.memory`) without restating the rest.
+```yaml
+verticalPodAutoscaler:
+  enabled: true
+  controlledValues: RequestsOnly
+  minAllowed: {cpu: 100m, memory: 512Mi}
+  maxAllowed: {cpu: "1", memory: 4Gi}
+```
+
 {{ template "chart.valuesSection" . }}

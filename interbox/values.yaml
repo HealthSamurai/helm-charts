@@ -58,6 +58,17 @@ terminationGracePeriodSeconds: 30
 # limit, to avoid an OOM kill during boot. e.g. requests: {cpu: 100m, memory: 512Mi}.
 resources: {}
 
+verticalPodAutoscaler:
+  enabled: false
+  controlledResources: []
+  controlledValues: ""
+  maxAllowed: {}
+  minAllowed: {}
+  updatePolicy:
+    updateMode: Initial
+    # -- Lets `Recreate` / `InPlaceOrRecreate` update the single pod. The updater skips workloads with fewer than 2 replicas by default; `null` keeps that.
+    minReplicas: 1
+
 # -- Node selector for scheduling.
 nodeSelector: {}
 # -- Affinity rules for scheduling.

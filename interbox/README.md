@@ -3,7 +3,7 @@
 Integration Engine for Modern Healthcare Solutions — the all-in-one interbox
 (engine + API + dashboard). Ingests HL7v2 over MLLP and delivers FHIR to Aidbox.
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Prerequisites
 
@@ -97,6 +97,24 @@ secrets:
     AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
+## Vertical Pod Autoscaler
+
+Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the
+Deployment; the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+CRDs, recommender and admission controller. The default `updatePolicy.updateMode: Initial` applies the
+recommendation only when a pod is created and never evicts it: interbox runs a single pod
+that builds the workspace on boot, so an eviction is downtime. A new recommendation therefore
+reaches the next pod only (`kubectl rollout restart deployment/interbox` applies it), and until
+VPA has a first one, pods keep plain `resources`. Every setting is a map key, so a
+per-environment overlay can change one (say `maxAllowed.memory`) without restating the rest.
+```yaml
+verticalPodAutoscaler:
+  enabled: true
+  controlledValues: RequestsOnly
+  minAllowed: {cpu: 100m, memory: 512Mi}
+  maxAllowed: {cpu: "1", memory: 4Gi}
+```
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -149,3 +167,10 @@ secrets:
 | strategy | object | `{"type":"Recreate"}` | Deployment strategy. Recreate — one MLLP listener + boot-build, never two pods racing the TCP port. |
 | terminationGracePeriodSeconds | int | `30` | Grace period for in-flight messages to persist + ACK before SIGKILL. |
 | tolerations | list | `[]` | Tolerations for scheduling. |
+| verticalPodAutoscaler.controlledResources | list | `[]` |  |
+| verticalPodAutoscaler.controlledValues | string | `""` |  |
+| verticalPodAutoscaler.enabled | bool | `false` |  |
+| verticalPodAutoscaler.maxAllowed | object | `{}` |  |
+| verticalPodAutoscaler.minAllowed | object | `{}` |  |
+| verticalPodAutoscaler.updatePolicy.minReplicas | int | `1` | Lets `Recreate` / `InPlaceOrRecreate` update the single pod. The updater skips workloads with fewer than 2 replicas by default; `null` keeps that. |
+| verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
