@@ -130,6 +130,17 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
+verticalPodAutoscaler:
+  enabled: false
+  controlledResources: [memory]
+  controlledValues: RequestsOnly
+  maxAllowed: {}
+  minAllowed: {}
+  updatePolicy:
+    updateMode: Recreate
+    # -- The updater evicts only while at least this many replicas are running, so a single-replica Deployment is never evicted. Set `1` to allow it (each update is then a short downtime).
+    minReplicas: 2
+
 service:
   type: ClusterIP
   apiPort: 80
