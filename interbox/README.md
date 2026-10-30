@@ -1,16 +1,17 @@
 # interbox
 
 Integration Engine for Modern Healthcare Solutions. This chart deploys the all-in-one
-interbox, which ingests HL7v2 over MLLP and delivers FHIR to Aidbox. The API and dashboard
-run in the same pod as the engine.
+interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
+example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
 ![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
-interbox needs a **Postgres** database and an **Aidbox** endpoint, and the chart bundles
-neither. See [PREREQUISITES.md](./PREREQUISITES.md) for both, or install the sibling
-[`postgres`](../postgres) and [`aidbox`](../aidbox) charts if you want them in-cluster.
+interbox needs a **Postgres** database. **Aidbox** is optional: you need one only when your
+pipelines deliver to it. The chart bundles neither, so see [PREREQUISITES.md](./PREREQUISITES.md)
+or install the sibling [`postgres`](../postgres) and [`aidbox`](../aidbox) charts if you want
+them in-cluster.
 
 ```console
 helm repo add healthsamurai https://healthsamurai.github.io/helm-charts

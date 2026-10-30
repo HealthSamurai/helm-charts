@@ -21,8 +21,10 @@ MLLP (HL7v2 ingest), TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.typ
   kubectl -n {{ .Release.Namespace }} get svc {{ include "interbox.fullname" . }}-mllp
 {{- end }}
 
-Aidbox: interbox targets {{ index .Values.config "AIDBOX_URL" }}
-  No Aidbox yet? Install the `aidbox` chart. Using an external one? Point AIDBOX_URL at it.
+{{- with index .Values.config "AIDBOX_URL" }}
+
+Aidbox: {{ . }}
+{{- end }}
 
 {{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 

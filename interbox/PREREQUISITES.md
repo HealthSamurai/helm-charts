@@ -1,7 +1,8 @@
 # interbox chart prerequisites
 
 This chart deploys **only interbox**, the all-in-one integration engine with its API and
-dashboard, and you point it at an external Postgres and Aidbox.
+dashboard. You point it at an external Postgres, and at Aidbox when your pipelines deliver
+to one.
 
 ## 1. Postgres
 
@@ -70,6 +71,8 @@ private VNet:
     postgres://interbox:pass@host:5432/interbox?sslmode=require
 
 ## 2. Aidbox
+
+Optional. You need an Aidbox only when your pipelines deliver to it.
 
 - **Already have one**: set `config.AIDBOX_URL` to it and set `secrets.AIDBOX_CLIENT_SECRET`.
 - **Need one**: install the sibling [`aidbox`](../aidbox) chart, then point
