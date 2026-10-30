@@ -93,6 +93,25 @@ securityContext:
     type: RuntimeDefault
 # -- Extra pod annotations.
 podAnnotations: {}
+# -- Deployment annotations (the object, not its pods) — e.g. Reloader's
+# `secret.reloader.stakater.com/reload` to restart on changes to a Secret the chart doesn't render.
+deploymentAnnotations: {}
+
+# -- Extra pod volumes. A Secrets Store CSI volume creates the synced Secret its SecretProviderClass
+# declares only while a pod mounts it; point `secrets.existingSecretName` at that Secret.
+volumes: []
+# - name: kv-secrets
+#   csi:
+#     driver: secrets-store.csi.k8s.io
+#     readOnly: true
+#     volumeAttributes:
+#       secretProviderClass: interbox-kv
+
+# -- Extra container volume mounts.
+volumeMounts: []
+# - name: kv-secrets
+#   mountPath: /mnt/secrets
+#   readOnly: true
 
 serviceAccount:
   # -- Create a ServiceAccount for the pod.
@@ -113,19 +132,20 @@ config:
   INTERBOX_WORKSPACE_POLL_MS: "5000"
   # INTERBOX_WORKSPACE_GIT_URL: "https://github.com/you/your-workspace"
 
+# -- Secret env → Secret (envFrom), shaped like `config`: keys ARE env var names; only non-empty
+# ones are written. `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates
+# the db); add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are
+# optional. `existingSecretName` is the one key that is not an env var. Deprecated: the 0.1 shape
+# `secrets.data.<KEY>` still works; a key set both ways takes the value set here.
 secrets:
-  # -- Use a pre-provisioned Secret instead of creating one from `data` below (External Secrets Operator, sealed-secrets, …).
+  # -- Use a pre-provisioned Secret instead of creating one from the keys below (External Secrets Operator, Secrets Store CSI, sealed-secrets, …). When set, the keys below are ignored.
   existingSecretName: ""
-  # -- Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written.
-  # `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates the db);
-  # add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are optional.
-  data:
-    DATABASE_URL: ""
-    AIDBOX_CLIENT_SECRET: ""
-    INTERBOX_LICENSE: ""
-    CLAUDE_CODE_OAUTH_TOKEN: ""
-    ANTHROPIC_API_KEY: ""
-    INTERBOX_WORKSPACE_GIT_KEY: ""
+  DATABASE_URL: ""
+  AIDBOX_CLIENT_SECRET: ""
+  INTERBOX_LICENSE: ""
+  CLAUDE_CODE_OAUTH_TOKEN: ""
+  ANTHROPIC_API_KEY: ""
+  INTERBOX_WORKSPACE_GIT_KEY: ""
 
 # -- Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart.
 extraEnvFromConfigMaps: []
@@ -142,6 +162,8 @@ service:
   type: ClusterIP
   # -- Dashboard/API port.
   port: 3001
+  # -- Dashboard/API Service annotations (e.g. GKE `cloud.google.com/neg`, `cloud.google.com/backend-config`).
+  annotations: {}
 
 # interbox is an INTERNAL tool — nothing faces the public internet. MLLP is fed over
 # VPN/VNet (transport-encrypted); the dashboard is cluster-internal.

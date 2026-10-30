@@ -3,7 +3,7 @@
 Integration Engine for Modern Healthcare Solutions — the all-in-one interbox
 (engine + API + dashboard). Ingests HL7v2 over MLLP and delivers FHIR to Aidbox.
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Prerequisites
 
@@ -28,10 +28,12 @@ Minimal `values.yaml`:
 config:
   AIDBOX_URL: http://aidbox:8080          # your Aidbox (sibling chart or external)
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
+
+`secrets` is shaped like `config`: keys are env var names. The 0.1 shape
+`secrets.data.<KEY>` still works but is deprecated; a key set both ways takes the flat value.
 
 The dashboard + API serve on `3001`; MLLP (HL7v2) on TCP `2575` via a dedicated
 LoadBalancer. See [`values-aks.yaml`](./values-aks.yaml) for the Azure overlay.
@@ -50,9 +52,8 @@ existing Aidbox.
 config:
   AIDBOX_URL: https://aidbox.internal
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
 ### 2. Existing Aidbox — reuse its Postgres cluster
@@ -62,9 +63,8 @@ cluster Aidbox uses (not Aidbox's own database).
 config:
   AIDBOX_URL: https://aidbox.internal
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@aidbox-pg:5432/interbox?sslmode=require
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@aidbox-pg:5432/interbox?sslmode=require
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
 ### 3. No Aidbox / no Postgres yet — install the sibling charts (dev/stage)
@@ -78,9 +78,8 @@ helm install interbox healthsamurai/interbox -n interbox -f dev-values.yaml
 config:
   AIDBOX_URL: http://aidbox:8080
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg-postgres:5432/interbox   # user needs CREATEDB
-    AIDBOX_CLIENT_SECRET: secret
+  DATABASE_URL: postgres://interbox:pass@pg-postgres:5432/interbox   # user needs CREATEDB
+  AIDBOX_CLIENT_SECRET: secret
 ```
 
 ### 4. Locked-down managed PG (no admin grant)
@@ -92,9 +91,38 @@ database:
 config:
   AIDBOX_URL: https://aidbox.internal
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
+```
+
+## Secrets from a vault
+
+`secrets.existingSecretName` takes any Secret you provision: External Secrets Operator,
+sealed-secrets, or the [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/).
+The CSI driver creates the Secret a `SecretProviderClass` syncs (`secretObjects`) only while a
+pod mounts its volume, so mount it:
+```yaml
+secrets:
+  existingSecretName: interbox-secrets   # secretObjects[].secretName in the SecretProviderClass
+volumes:
+  - name: kv-secrets
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: interbox-kv
+volumeMounts:
+  - name: kv-secrets
+    mountPath: /mnt/secrets
+    readOnly: true
+```
+
+The pod restarts when the chart's own ConfigMap or Secret changes (`checksum/*` pod
+annotations). A Secret the chart doesn't render is invisible to it: a rotated value reaches
+the env only after a restart, e.g. by [Reloader](https://github.com/stakater/Reloader):
+```yaml
+deploymentAnnotations:
+  secret.reloader.stakater.com/reload: interbox-secrets
 ```
 
 ## Vertical Pod Autoscaler
@@ -123,6 +151,7 @@ verticalPodAutoscaler:
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — interbox never calls the Kubernetes API. |
 | config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names. `AIDBOX_URL` points at your Aidbox (the sibling `aidbox` chart in-cluster, or an existing external one). Uncomment `AIDBOX_CLIENT_ID` to authenticate as a scoped least-privilege client (defaults to `root`). |
 | database.createDatabase | bool | `true` | Engine self-creates the `interbox` db on boot when the DATABASE_URL user has `CREATEDB`. `false` → sets `INTERBOX_SKIP_ENSURE_DB`; pre-create the db yourself (locked-down managed PG). |
+| deploymentAnnotations | object | `{}` | Deployment annotations (the object, not its pods) — e.g. Reloader's `secret.reloader.stakater.com/reload` to restart on changes to a Secret the chart doesn't render. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart. |
 | extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
 | fullnameOverride | string | `""` | Override the full resource name (default: the chart name — keeps the in-cluster service name stable). |
@@ -156,9 +185,10 @@ verticalPodAutoscaler:
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones + installs + builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. HA is deferred — leave at 1 (all-in-one process + single MLLP listener). |
 | resources | object | `{}` | Pod resource requests / limits. NOTE: the boot-time workspace build (git clone + bun install + Bun.build) is memory-hungry — set limits generously, or omit the memory limit, to avoid an OOM kill during boot. e.g. requests: {cpu: 100m, memory: 512Mi}. |
-| secrets.data | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":""}` | Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written. `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates the db); add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are optional. |
-| secrets.existingSecretName | string | `""` | Use a pre-provisioned Secret instead of creating one from `data` below (External Secrets Operator, sealed-secrets, …). |
+| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom), shaped like `config`: keys ARE env var names; only non-empty ones are written. `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates the db); add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are optional. `existingSecretName` is the one key that is not an env var. Deprecated: the 0.1 shape `secrets.data.<KEY>` still works; a key set both ways takes the value set here. |
+| secrets.existingSecretName | string | `""` | Use a pre-provisioned Secret instead of creating one from the keys below (External Secrets Operator, Secrets Store CSI, sealed-secrets, …). When set, the keys below are ignored. |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000); writable paths are HOME + /tmp, /app is read-only. Hardened for prod. (readOnlyRootFilesystem is off — /tmp + HOME need writes; enable it only with emptyDir mounts at those paths.) |
+| service.annotations | object | `{}` | Dashboard/API Service annotations (e.g. GKE `cloud.google.com/neg`, `cloud.google.com/backend-config`). |
 | service.port | int | `3001` | Dashboard/API port. |
 | service.type | string | `"ClusterIP"` | Dashboard/API service type. |
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
@@ -174,3 +204,5 @@ verticalPodAutoscaler:
 | verticalPodAutoscaler.minAllowed | object | `{}` |  |
 | verticalPodAutoscaler.updatePolicy.minReplicas | int | `1` | Lets `Recreate` / `InPlaceOrRecreate` update the single pod. The updater skips workloads with fewer than 2 replicas by default; `null` keeps that. |
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
+| volumeMounts | list | `[]` | Extra container volume mounts. |
+| volumes | list | `[]` | Extra pod volumes. A Secrets Store CSI volume creates the synced Secret its SecretProviderClass declares only while a pod mounts it; point `secrets.existingSecretName` at that Secret. |

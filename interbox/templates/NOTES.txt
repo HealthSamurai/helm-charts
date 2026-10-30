@@ -24,9 +24,7 @@ MLLP (HL7v2 ingest) — TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.
 Aidbox: interbox targets {{ index .Values.config "AIDBOX_URL" }}
   (bundled? install the `aidbox` chart. External? point AIDBOX_URL at it.)
 
-{{- if not .Values.secrets.data.INTERBOX_LICENSE }}
-{{- if not .Values.secrets.existingSecretName }}
+{{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 
 License: not set — activate via the dashboard.
-{{- end }}
 {{- end }}

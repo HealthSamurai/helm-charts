@@ -50,14 +50,15 @@ Drop it only when the path is already encrypted/trusted (VPN, or same private VN
 
 ## 2. Aidbox
 
-- **Already have one** — set `config.AIDBOX_URL` to it and `secrets.data.AIDBOX_CLIENT_SECRET`.
+- **Already have one** — set `config.AIDBOX_URL` to it and `secrets.AIDBOX_CLIENT_SECRET`.
 - **Need one** — install the sibling [`aidbox`](../aidbox) chart, then point
   `config.AIDBOX_URL` at its service (e.g. `http://aidbox:8080`).
 
 ## 3. Secrets
 
-Either let the chart create the Secret from `secrets.data`, or provision your own
-and set `secrets.existingSecretName`. Keys (env var names):
+Either let the chart create the Secret from the `secrets` keys, or provision your own
+(External Secrets Operator, Secrets Store CSI, …) and set `secrets.existingSecretName`.
+Keys (env var names):
 
 | Key | Required | Purpose |
 |-----|----------|---------|
