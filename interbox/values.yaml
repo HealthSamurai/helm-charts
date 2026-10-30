@@ -149,7 +149,7 @@ mllp:
     annotations: {}
     # -- `Local` keeps the sender's source IP. Empty = `Cluster`.
     externalTrafficPolicy: Local
-    # -- Static LB IP, a stable VPN/firewall target. Empty = dynamic.
+    # -- Static LB IP, a stable VPN/firewall target. Empty = dynamic. Kubernetes deprecated the field; prefer a cloud annotation.
     loadBalancerIP: ""
     # -- Sender CIDRs allowed to reach the LB.
     loadBalancerSourceRanges: []

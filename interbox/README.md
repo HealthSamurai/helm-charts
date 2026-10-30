@@ -104,6 +104,31 @@ secrets:
   AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
+## AKS
+
+[`values-aks.yaml`](./values-aks.yaml) makes the MLLP LoadBalancer internal and raises its TCP
+idle timeout. Add on top, as needed:
+
+```yaml
+mllp:
+  service:
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-ipv4: 10.20.0.5
+    loadBalancerSourceRanges:
+      - 10.10.0.0/16
+ingress:
+  enabled: true
+  className: nginx-internal
+  host: interbox.internal.example.com
+```
+
+- `azure-load-balancer-ipv4` pins the LB to a free IP in its subnet, so the VPN/firewall target
+  survives a reinstall. Prefer it to `mllp.service.loadBalancerIP`: Kubernetes deprecated
+  `spec.loadBalancerIP` in 1.24.
+- `loadBalancerSourceRanges` limits the LB to the sender subnets.
+- The dashboard stays private only behind an internal ingress class, one whose controller sits
+  behind an internal LB. Annotations on the Ingress itself don't make it internal.
+
 ## Secrets from a vault
 
 `secrets.existingSecretName` takes any Secret you provision: External Secrets Operator,
@@ -184,7 +209,7 @@ verticalPodAutoscaler:
 | mllp.service.annotations | object | `{}` | MLLP Service annotations. |
 | mllp.service.externalTrafficPolicy | string | `"Local"` | `Local` keeps the sender's source IP. Empty = `Cluster`. |
 | mllp.service.internal | bool | `true` | Shown in the install notes only. The cloud annotation makes the LB private (see values-aks.yaml). |
-| mllp.service.loadBalancerIP | string | `""` | Static LB IP, a stable VPN/firewall target. Empty = dynamic. |
+| mllp.service.loadBalancerIP | string | `""` | Static LB IP, a stable VPN/firewall target. Empty = dynamic. Kubernetes deprecated the field; prefer a cloud annotation. |
 | mllp.service.loadBalancerSourceRanges | list | `[]` | Sender CIDRs allowed to reach the LB. |
 | mllp.service.type | string | `"LoadBalancer"` | MLLP Service type. Raw TCP, so not an Ingress. |
 | nameOverride | string | `""` | Override the chart name used in resource names. |
