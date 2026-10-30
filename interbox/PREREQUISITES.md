@@ -98,7 +98,8 @@ The keys are env var names:
 ## 4. Workspace and dashboard sign-in
 
 interbox loads its pipelines from a git repository, so set `config.INTERBOX_WORKSPACE_GIT_URL`.
-Without it the engine has nothing to load and stops with "no workspace configured". A private
+Without it the engine parks with "no workspace configured": the dashboard stays up, but no
+pipeline runs. A private
 repository also needs `secrets.INTERBOX_WORKSPACE_GIT_KEY`.
 [The Workspace](https://www.health-samurai.io/docs/interbox/ops/workspace) covers refs, access
 modes and keys.
