@@ -22,7 +22,7 @@ spec:
       labels:
         {{- include "interbox.selectorLabels" . | nindent 8 }}
       annotations:
-        {{- /* Hash the payload only: the rendered labels carry the chart version, and a restart on every chart bump means MLLP downtime. */}}
+        {{- /* Payload only: labels carry the chart version, so hashing them restarts pods on every chart bump. */}}
         checksum/config: {{ (include (print $.Template.BasePath "/configmap.yaml") . | fromYaml).data | toJson | sha256sum }}
         {{- if not .Values.secrets.existingSecretName }}
         checksum/secret: {{ (include (print $.Template.BasePath "/secret.yaml") . | fromYaml).stringData | toJson | sha256sum }}

@@ -103,7 +103,7 @@ The CSI driver creates the Secret a `SecretProviderClass` syncs (`secretObjects`
 pod mounts its volume, so mount it:
 ```yaml
 secrets:
-  existingSecretName: interbox-secrets   # secretObjects[].secretName in the SecretProviderClass
+  existingSecretName: interbox-secrets
 volumes:
   - name: kv-secrets
     csi:
@@ -151,7 +151,7 @@ verticalPodAutoscaler:
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token — interbox never calls the Kubernetes API. |
 | config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys ARE env var names. `AIDBOX_URL` points at your Aidbox (the sibling `aidbox` chart in-cluster, or an existing external one). Uncomment `AIDBOX_CLIENT_ID` to authenticate as a scoped least-privilege client (defaults to `root`). |
 | database.createDatabase | bool | `true` | Engine self-creates the `interbox` db on boot when the DATABASE_URL user has `CREATEDB`. `false` → sets `INTERBOX_SKIP_ENSURE_DB`; pre-create the db yourself (locked-down managed PG). |
-| deploymentAnnotations | object | `{}` | Deployment annotations (the object, not its pods) — e.g. Reloader's `secret.reloader.stakater.com/reload` to restart on changes to a Secret the chart doesn't render. |
+| deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart. |
 | extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
 | fullnameOverride | string | `""` | Override the full resource name (default: the chart name — keeps the in-cluster service name stable). |
@@ -185,10 +185,10 @@ verticalPodAutoscaler:
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones + installs + builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. HA is deferred — leave at 1 (all-in-one process + single MLLP listener). |
 | resources | object | `{}` | Pod resource requests / limits. NOTE: the boot-time workspace build (git clone + bun install + Bun.build) is memory-hungry — set limits generously, or omit the memory limit, to avoid an OOM kill during boot. e.g. requests: {cpu: 100m, memory: 512Mi}. |
-| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom), shaped like `config`: keys ARE env var names; only non-empty ones are written. `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates the db); add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are optional. `existingSecretName` is the one key that is not an env var. Deprecated: the 0.1 shape `secrets.data.<KEY>` still works; a key set both ways takes the value set here. |
-| secrets.existingSecretName | string | `""` | Use a pre-provisioned Secret instead of creating one from the keys below (External Secrets Operator, Secrets Store CSI, sealed-secrets, …). When set, the keys below are ignored. |
+| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written. `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates the db); add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are optional. `secrets.data.<KEY>` is deprecated; a flat key wins. |
+| secrets.existingSecretName | string | `""` | Use a pre-provisioned Secret instead of creating one from the keys below (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000); writable paths are HOME + /tmp, /app is read-only. Hardened for prod. (readOnlyRootFilesystem is off — /tmp + HOME need writes; enable it only with emptyDir mounts at those paths.) |
-| service.annotations | object | `{}` | Dashboard/API Service annotations (e.g. GKE `cloud.google.com/neg`, `cloud.google.com/backend-config`). |
+| service.annotations | object | `{}` | Dashboard/API Service annotations. |
 | service.port | int | `3001` | Dashboard/API port. |
 | service.type | string | `"ClusterIP"` | Dashboard/API service type. |
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
@@ -205,4 +205,4 @@ verticalPodAutoscaler:
 | verticalPodAutoscaler.updatePolicy.minReplicas | int | `1` | Lets `Recreate` / `InPlaceOrRecreate` update the single pod. The updater skips workloads with fewer than 2 replicas by default; `null` keeps that. |
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
-| volumes | list | `[]` | Extra pod volumes. A Secrets Store CSI volume creates the synced Secret its SecretProviderClass declares only while a pod mounts it; point `secrets.existingSecretName` at that Secret. |
+| volumes | list | `[]` | Extra pod volumes. |

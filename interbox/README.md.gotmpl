@@ -103,7 +103,7 @@ The CSI driver creates the Secret a `SecretProviderClass` syncs (`secretObjects`
 pod mounts its volume, so mount it:
 ```yaml
 secrets:
-  existingSecretName: interbox-secrets   # secretObjects[].secretName in the SecretProviderClass
+  existingSecretName: interbox-secrets
 volumes:
   - name: kv-secrets
     csi:
