@@ -2,12 +2,12 @@ interbox {{ .Chart.AppVersion }} installed as release {{ .Release.Name }} in {{ 
 
 Database (the pod runs this on boot):
 {{- if .Values.database.createDatabase }}
-  creates the interbox database (DATABASE_URL user needs CREATEDB) + applies the schema
+  creates the interbox database (DATABASE_URL user needs CREATEDB) and applies the schema
 {{- else }}
   applies the interbox schema (database pre-created; bootstrap skipped)
 {{- end }}
 
-Dashboard + API:
+Dashboard and API:
 {{- if .Values.ingress.enabled }}
   https://{{ .Values.ingress.host }}
 {{- else }}
@@ -17,14 +17,14 @@ Dashboard + API:
 
 {{- if .Values.mllp.enabled }}
 
-MLLP (HL7v2 ingest) — TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.type }}{{ if .Values.mllp.service.internal }} (internal){{ end }}:
+MLLP (HL7v2 ingest), TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.type }}{{ if .Values.mllp.service.internal }} (internal){{ end }}:
   kubectl -n {{ .Release.Namespace }} get svc {{ include "interbox.fullname" . }}-mllp
 {{- end }}
 
 Aidbox: interbox targets {{ index .Values.config "AIDBOX_URL" }}
-  (bundled? install the `aidbox` chart. External? point AIDBOX_URL at it.)
+  No Aidbox yet? Install the `aidbox` chart. Using an external one? Point AIDBOX_URL at it.
 
 {{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 
-License: not set — activate via the dashboard.
+License: not set. Activate it in the dashboard.
 {{- end }}

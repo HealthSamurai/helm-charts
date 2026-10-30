@@ -1,18 +1,16 @@
 # interbox
 
-Integration Engine for Modern Healthcare Solutions — the all-in-one interbox
-(engine + API + dashboard). Ingests HL7v2 over MLLP and delivers FHIR to Aidbox.
+Integration Engine for Modern Healthcare Solutions. This chart deploys the all-in-one
+interbox, which ingests HL7v2 over MLLP and delivers FHIR to Aidbox. The API and dashboard
+run in the same pod as the engine.
 
 ![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
-## Prerequisites
-
-interbox needs a **Postgres** database and an **Aidbox** endpoint — see
-[PREREQUISITES.md](./PREREQUISITES.md). Postgres and Aidbox are NOT bundled; install
-the sibling [`postgres`](../postgres) / [`aidbox`](../aidbox) charts if you need them
-in-cluster.
-
 ## Installation
+
+interbox needs a **Postgres** database and an **Aidbox** endpoint, and the chart bundles
+neither. See [PREREQUISITES.md](./PREREQUISITES.md) for both, or install the sibling
+[`postgres`](../postgres) and [`aidbox`](../aidbox) charts if you want them in-cluster.
 
 ```console
 helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
@@ -32,22 +30,22 @@ secrets:
   AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
-`secrets` is shaped like `config`: keys are env var names. The 0.1 shape
-`secrets.data.<KEY>` still works but is deprecated; a key set both ways takes the flat value.
+`secrets` takes env var names as keys, the same as `config`. The 0.1 shape
+`secrets.data.<KEY>` still works but is deprecated, and when a key is set both ways the flat
+value wins.
 
-The dashboard + API serve on `3001`; MLLP (HL7v2) on TCP `2575` via a dedicated
-LoadBalancer. See [`values-aks.yaml`](./values-aks.yaml) for the Azure overlay.
+The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
+of its own.
 
 ## Setup scenarios
 
-All snippets are the interbox values. Add `-f values-aks.yaml` for the internal MLLP
-LoadBalancer + idle-timeout on AKS. Aidbox/Postgres are external unless you install the
-sibling charts. Sibling service names depend on their release names — check their
-`helm install` output.
+Each snippet is a values file for this chart, and on AKS you add `-f values-aks.yaml` as
+well. Aidbox and Postgres are external unless you install the sibling charts, whose service
+names depend on their release names, so check their `helm install` output.
 
-### 1. Existing Aidbox + managed Postgres (typical prod)
+### 1. Existing Aidbox and managed Postgres (typical prod)
 
-interbox creates its own `interbox` database on your managed PG and delivers to your
+interbox creates its own `interbox` database on your managed Postgres and delivers to your
 existing Aidbox.
 
 ```yaml
@@ -58,10 +56,10 @@ secrets:
   AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
-### 2. Existing Aidbox — reuse its Postgres cluster
+### 2. Existing Aidbox, reusing its Postgres cluster
 
-No separate DB server: interbox gets a dedicated `interbox` database on the same
-cluster Aidbox uses (not Aidbox's own database).
+There's no separate database server: interbox gets its own `interbox` database on the
+cluster Aidbox already uses, next to Aidbox's own database.
 
 ```yaml
 config:
@@ -71,7 +69,7 @@ secrets:
   AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
-### 3. No Aidbox / no Postgres yet — install the sibling charts (dev/stage)
+### 3. No Aidbox or Postgres yet: install the sibling charts (dev/stage)
 
 ```console
 helm install pg       healthsamurai/postgres -n interbox --create-namespace
@@ -79,7 +77,7 @@ helm install aidbox   healthsamurai/aidbox   -n interbox
 helm install interbox healthsamurai/interbox -n interbox -f dev-values.yaml
 ```
 
-`dev-values.yaml` (point at the sibling charts' service names):
+`dev-values.yaml`, pointing at the sibling charts' service names:
 
 ```yaml
 config:
@@ -89,10 +87,11 @@ secrets:
   AIDBOX_CLIENT_SECRET: secret
 ```
 
-### 4. Locked-down managed PG (no admin grant)
+### 4. Locked-down managed Postgres (no admin grant)
 
-Pre-create the db + extensions yourself (see [PREREQUISITES.md](./PREREQUISITES.md));
-`createDatabase: false` sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips its bootstrap.
+Pre-create the database and its extensions yourself as [PREREQUISITES.md](./PREREQUISITES.md)
+describes. `createDatabase: false` sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips its
+bootstrap.
 
 ```yaml
 database:
@@ -122,19 +121,19 @@ ingress:
   host: interbox.internal.example.com
 ```
 
-- `azure-load-balancer-ipv4` pins the LB to a free IP in its subnet, so the VPN/firewall target
-  survives a reinstall. Prefer it to `mllp.service.loadBalancerIP`: Kubernetes deprecated
-  `spec.loadBalancerIP` in 1.24.
+- `azure-load-balancer-ipv4` pins the LB to a free IP in its subnet, so the VPN or firewall
+  target survives a reinstall. Use it instead of `mllp.service.loadBalancerIP`: Kubernetes
+  deprecated `spec.loadBalancerIP` in 1.24.
 - `loadBalancerSourceRanges` limits the LB to the sender subnets.
 - The dashboard stays private only behind an internal ingress class, one whose controller sits
   behind an internal LB. Annotations on the Ingress itself don't make it internal.
 
 ## Secrets from a vault
 
-`secrets.existingSecretName` takes any Secret you provision: External Secrets Operator,
-sealed-secrets, or the [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/).
-The CSI driver creates the Secret a `SecretProviderClass` syncs (`secretObjects`) only while a
-pod mounts its volume, so mount it:
+`secrets.existingSecretName` takes any Secret you provision yourself, with External Secrets
+Operator, sealed-secrets or the [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/).
+The CSI driver creates the Secret that a `SecretProviderClass` syncs (`secretObjects`) only
+while a pod mounts its volume, so mount it:
 
 ```yaml
 secrets:
@@ -152,9 +151,10 @@ volumeMounts:
     readOnly: true
 ```
 
-The pod restarts when the chart's own ConfigMap or Secret changes (`checksum/*` pod
-annotations). A Secret the chart doesn't render is invisible to it: a rotated value reaches
-the env only after a restart, e.g. by [Reloader](https://github.com/stakater/Reloader):
+The `checksum/*` pod annotations restart the pod when the chart's own ConfigMap or Secret
+changes. A Secret the chart doesn't render is invisible to it, so a rotated value only
+reaches the env after a restart, which [Reloader](https://github.com/stakater/Reloader) can
+do:
 
 ```yaml
 deploymentAnnotations:
@@ -164,13 +164,17 @@ deploymentAnnotations:
 ## Vertical Pod Autoscaler
 
 Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the
-Deployment; the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
-CRDs, recommender and admission controller. The default `updatePolicy.updateMode: Initial` applies the
-recommendation only when a pod is created and never evicts it: interbox runs a single pod
-that builds the workspace on boot, so an eviction is downtime. A new recommendation therefore
-reaches the next pod only (`kubectl rollout restart deployment/interbox` applies it), and until
-VPA has a first one, pods keep plain `resources`. Every setting is a map key, so a
-per-environment overlay can change one (say `maxAllowed.memory`) without restating the rest.
+Deployment, and the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+CRDs, recommender and admission controller.
+
+The default `updatePolicy.updateMode: Initial` applies a recommendation only when a pod is
+created and never evicts it. interbox runs a single pod that builds the workspace on boot, so
+an eviction is downtime. A new recommendation therefore reaches only the next pod, and
+`kubectl rollout restart deployment/interbox` applies it now. Until VPA has a first
+recommendation, pods keep plain `resources`.
+
+Every setting is a map key, so a per-environment overlay can change one, say
+`maxAllowed.memory`, without restating the rest.
 
 ```yaml
 verticalPodAutoscaler:
