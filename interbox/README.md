@@ -218,7 +218,7 @@ verticalPodAutoscaler:
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
-| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` is required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
+| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). |
@@ -257,7 +257,7 @@ verticalPodAutoscaler:
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Keep at 1: the pod runs a single MLLP listener. |
 | resources | object | `{}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. |
-| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` or OIDC (see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
+| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` unless `INTERBOX_AUTH_ADMIN_ENABLED` is `false` (OIDC only; see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |
 | service.annotations | object | `{}` | Dashboard/API Service annotations. |

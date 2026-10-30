@@ -101,8 +101,8 @@ serviceAccount:
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` is
-# required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` and
+# `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
 config:
   INTERBOX_WORKSPACE_POLL_MS: "5000"
 
@@ -112,7 +112,8 @@ config:
   AIDBOX_URL: "http://aidbox:8080"
 
 # -- Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL`
-# is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` or OIDC (see PREREQUISITES.md).
+# is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` unless
+# `INTERBOX_AUTH_ADMIN_ENABLED` is `false` (OIDC only; see PREREQUISITES.md).
 # `secrets.data.<KEY>` is deprecated; a flat key wins.
 secrets:
   # -- Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …).
