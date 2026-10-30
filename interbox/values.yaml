@@ -99,24 +99,36 @@ serviceAccount:
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys are env var names.
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` is
+# required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
 config:
-  MLLP_HOST: "0.0.0.0"
-  MLLP_PORT: "2575"
-  AIDBOX_URL: "http://aidbox:8080"
   INTERBOX_WORKSPACE_POLL_MS: "5000"
 
+  MLLP_HOST: "0.0.0.0"
+  MLLP_PORT: "2575"
+
+  AIDBOX_URL: "http://aidbox:8080"
+
 # -- Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL`
-# is required. `secrets.data.<KEY>` is deprecated; a flat key wins.
+# is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` or OIDC (see PREREQUISITES.md).
+# `secrets.data.<KEY>` is deprecated; a flat key wins.
 secrets:
   # -- Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …).
   existingSecretName: ""
+
   DATABASE_URL: ""
-  AIDBOX_CLIENT_SECRET: ""
+  INTERBOX_DB_DATABRICKS_CLIENT_SECRET: ""
+
+  INTERBOX_AUTH_ADMIN_PASSWORD: ""
+  INTERBOX_AUTH_CLIENT_SECRET: ""
+
+  INTERBOX_WORKSPACE_GIT_KEY: ""
   INTERBOX_LICENSE: ""
+
+  AIDBOX_CLIENT_SECRET: ""
+
   CLAUDE_CODE_OAUTH_TOKEN: ""
   ANTHROPIC_API_KEY: ""
-  INTERBOX_WORKSPACE_GIT_KEY: ""
 
 # -- Extra ConfigMaps to load env from (envFrom).
 extraEnvFromConfigMaps: []
@@ -138,7 +150,7 @@ service:
 mllp:
   # -- Expose MLLP (HL7v2 over raw TCP).
   enabled: true
-  # -- MLLP TCP port.
+  # -- MLLP TCP port. Match the port the workspace's MLLP source listens on.
   port: 2575
   service:
     # -- MLLP Service type. Raw TCP, so not an Ingress.

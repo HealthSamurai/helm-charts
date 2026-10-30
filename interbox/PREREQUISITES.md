@@ -87,15 +87,32 @@ The keys are env var names:
 | Key | Required | Purpose |
 |-----|----------|---------|
 | `DATABASE_URL` | yes | app connection to the `interbox` db; user needs `CREATEDB` (unless `createDatabase=false`) |
-| `AIDBOX_CLIENT_SECRET` | if using Aidbox | Aidbox client secret |
-| `INTERBOX_LICENSE` | no | blank = activate via dashboard |
-| `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | no | dashboard assistant auth |
-| `INTERBOX_WORKSPACE_GIT_KEY` | no | private workspace repo access |
 | `INTERBOX_DB_DATABRICKS_CLIENT_SECRET` | on Lakebase as a service principal | the service principal's OAuth secret |
+| `INTERBOX_AUTH_ADMIN_PASSWORD` | unless the admin account is off | local admin sign-in, 20 characters or more |
+| `INTERBOX_AUTH_CLIENT_SECRET` | with OIDC, if the client has one | OIDC client secret |
+| `INTERBOX_WORKSPACE_GIT_KEY` | for a private workspace repo | token or SSH key for the workspace repo |
+| `INTERBOX_LICENSE` | no | blank = activate via dashboard |
+| `AIDBOX_CLIENT_SECRET` | if using Aidbox | Aidbox client secret |
+| `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | no | dashboard assistant auth |
 
-## 4. MLLP exposure
+## 4. Workspace and dashboard sign-in
 
-MLLP (HL7v2) is raw TCP on `mllp.port`, served by a LoadBalancer of its own. The chart
+interbox loads its pipelines from a git repository, so set `config.INTERBOX_WORKSPACE_GIT_URL`.
+Without it the engine has nothing to load and stops with "no workspace configured". A private
+repository also needs `secrets.INTERBOX_WORKSPACE_GIT_KEY`.
+[The Workspace](https://www.health-samurai.io/docs/interbox/ops/workspace) covers refs, access
+modes and keys.
+
+The dashboard needs `config.INTERBOX_PUBLIC_URL`, its browser-facing origin, and a way to sign
+in: the local admin account with `secrets.INTERBOX_AUTH_ADMIN_PASSWORD`, OIDC, or both. Until
+then the dashboard stays parked, though `/api/health` keeps answering.
+[Securing Dashboard Access](https://www.health-samurai.io/docs/interbox/ops/secure-access) has
+the settings.
+
+## 5. MLLP exposure
+
+MLLP (HL7v2) is raw TCP on `mllp.port`, served by a LoadBalancer of its own. Keep `mllp.port`
+equal to the port your workspace's MLLP source listens on. The chart
 doesn't make that LB internal by itself, and without a cloud annotation most clouds give it a
 public IP, so add the annotation in an overlay. On AKS, `values-aks.yaml` does it.
 

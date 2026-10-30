@@ -25,22 +25,26 @@ Minimal `values.yaml`:
 
 ```yaml
 config:
-  AIDBOX_URL: http://aidbox:8080          # your Aidbox (sibling chart or external)
+  INTERBOX_WORKSPACE_GIT_URL: https://github.com/<you>/<your-workspace>
+  INTERBOX_PUBLIC_URL: https://interbox.internal.example
 secrets:
   DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
-  AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  INTERBOX_AUTH_ADMIN_PASSWORD: <20 characters or more>
 ```
+
+The workspace repository holds your pipelines. The dashboard needs its public URL and a way
+to sign in, and [PREREQUISITES.md](./PREREQUISITES.md) covers both.
 
 `secrets` takes env var names as keys, the same as `config`. The 0.1 shape
 `secrets.data.<KEY>` still works but is deprecated, and when a key is set both ways the flat
 value wins.
 
 The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
-of its own.
+of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
 
 ## Setup scenarios
 
-Each snippet is a values file for this chart, and on AKS you add `-f values-aks.yaml` as
+Each snippet adds to the minimal values above, and on AKS you add `-f values-aks.yaml` as
 well. Aidbox and Postgres are external unless you install the sibling charts, whose service
 names depend on their release names, so check their `helm install` output.
 
@@ -191,7 +195,7 @@ verticalPodAutoscaler:
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
-| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names. |
+| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` is required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). |
@@ -210,7 +214,7 @@ verticalPodAutoscaler:
 | ingress.pathType | string | `"Prefix"` | Ingress pathType (Prefix | ImplementationSpecific | Exact). |
 | ingress.tls | list | `[]` | Ingress TLS blocks. |
 | mllp.enabled | bool | `true` | Expose MLLP (HL7v2 over raw TCP). |
-| mllp.port | int | `2575` | MLLP TCP port. |
+| mllp.port | int | `2575` | MLLP TCP port. Match the port the workspace's MLLP source listens on. |
 | mllp.service.annotations | object | `{}` | MLLP Service annotations. |
 | mllp.service.externalTrafficPolicy | string | `"Local"` | `Local` keeps the sender's source IP. Empty = `Cluster`. |
 | mllp.service.internal | bool | `true` | Shown in the install notes only. The cloud annotation makes the LB private (see values-aks.yaml). |
@@ -227,7 +231,7 @@ verticalPodAutoscaler:
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Keep at 1: the pod runs a single MLLP listener. |
 | resources | object | `{}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. |
-| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. `secrets.data.<KEY>` is deprecated; a flat key wins. |
+| secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` or OIDC (see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |
 | service.annotations | object | `{}` | Dashboard/API Service annotations. |

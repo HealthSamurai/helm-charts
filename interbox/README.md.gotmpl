@@ -25,22 +25,26 @@ Minimal `values.yaml`:
 
 ```yaml
 config:
-  AIDBOX_URL: http://aidbox:8080          # your Aidbox (sibling chart or external)
+  INTERBOX_WORKSPACE_GIT_URL: https://github.com/<you>/<your-workspace>
+  INTERBOX_PUBLIC_URL: https://interbox.internal.example
 secrets:
   DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
-  AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  INTERBOX_AUTH_ADMIN_PASSWORD: <20 characters or more>
 ```
+
+The workspace repository holds your pipelines. The dashboard needs its public URL and a way
+to sign in, and [PREREQUISITES.md](./PREREQUISITES.md) covers both.
 
 `secrets` takes env var names as keys, the same as `config`. The 0.1 shape
 `secrets.data.<KEY>` still works but is deprecated, and when a key is set both ways the flat
 value wins.
 
 The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
-of its own.
+of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
 
 ## Setup scenarios
 
-Each snippet is a values file for this chart, and on AKS you add `-f values-aks.yaml` as
+Each snippet adds to the minimal values above, and on AKS you add `-f values-aks.yaml` as
 well. Aidbox and Postgres are external unless you install the sibling charts, whose service
 names depend on their release names, so check their `helm install` output.
 
