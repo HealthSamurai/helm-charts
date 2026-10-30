@@ -9,6 +9,5 @@ data:
   {{ $key }}: {{ $value | quote }}
   {{- end }}
   {{- if not .Values.database.createDatabase }}
-  # Locked-down PG: db is pre-created; skip the engine's boot-time bootstrap.
   INTERBOX_SKIP_ENSURE_DB: "1"
   {{- end }}

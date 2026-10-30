@@ -1,26 +1,19 @@
-# interbox — Integration Engine for Modern Healthcare Solutions.
-#
-# Standalone chart: deploys the all-in-one interbox (engine + API + dashboard).
-# Aidbox and Postgres are NOT bundled. Point interbox at them via config/secrets.
-# Need them in-cluster? Install the sibling `aidbox` / `postgres` charts separately
-# (see PREREQUISITES.md) and set config.AIDBOX_URL / secrets.data.DATABASE_URL.
-
 # -- Override the chart name used in resource names.
 nameOverride: ""
-# -- Override the full resource name (default: the chart name — keeps the in-cluster service name stable).
+# -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. HA is deferred — leave at 1 (all-in-one process + single MLLP listener).
+# -- Pod replicas. Keep at 1: the pod runs a single MLLP listener.
 replicaCount: 1
 
 image:
   # -- Image repository.
   repository: healthsamurai/interbox
-  # -- Image tag; defaults to `.Chart.AppVersion` (`edge` pre-GA). Pin a semver for reproducible prod.
+  # -- Image tag (default: `.Chart.AppVersion`). Pin a release for prod.
   tag: ""
-  # -- Pin by digest (wins over tag when set).
+  # -- Image digest; wins over `tag`.
   digest: ""
-  # -- Image pull policy. `Always` refreshes the moving `edge` tag; set `IfNotPresent` once pinned.
+  # -- Image pull policy. `Always` refreshes the moving `edge` tag; use `IfNotPresent` once pinned.
   pullPolicy: Always
 
 # -- Image pull secrets for a private registry.
@@ -31,7 +24,7 @@ probe:
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
-  # -- Startup probe. Generous: the pod clones + installs + builds the workspace on boot.
+  # -- Startup probe. Generous: the pod clones, installs and builds the workspace on boot.
   startup:
     initialDelaySeconds: 10
     periodSeconds: 10
@@ -47,15 +40,13 @@ probe:
     timeoutSeconds: 3
     failureThreshold: 3
 
-# -- Deployment strategy. Recreate — one MLLP listener + boot-build, never two pods racing the TCP port.
+# -- Deployment strategy. `Recreate`: two pods must never run the MLLP listener at once.
 strategy:
   type: Recreate
-# -- Grace period for in-flight messages to persist + ACK before SIGKILL.
+# -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
 
-# -- Pod resource requests / limits. NOTE: the boot-time workspace build (git clone +
-# bun install + Bun.build) is memory-hungry — set limits generously, or omit the memory
-# limit, to avoid an OOM kill during boot. e.g. requests: {cpu: 100m, memory: 512Mi}.
+# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none.
 resources: {}
 
 verticalPodAutoscaler:
@@ -66,7 +57,7 @@ verticalPodAutoscaler:
   minAllowed: {}
   updatePolicy:
     updateMode: Initial
-    # -- Lets `Recreate` / `InPlaceOrRecreate` update the single pod. The updater skips workloads with fewer than 2 replicas by default; `null` keeps that.
+    # -- Lets the updater act on the single pod; by default it skips workloads with fewer than 2 replicas. `null` keeps that default.
     minReplicas: 1
 
 # -- Node selector for scheduling.
@@ -75,12 +66,11 @@ nodeSelector: {}
 affinity: {}
 # -- Tolerations for scheduling.
 tolerations: []
-# -- Don't mount the ServiceAccount token — interbox never calls the Kubernetes API.
+
+# -- Don't mount the ServiceAccount token; interbox never calls the Kubernetes API.
 automountServiceAccountToken: false
 
-# -- Container securityContext. The image runs as non-root `bun` (uid 1000); writable
-# paths are HOME + /tmp, /app is read-only. Hardened for prod. (readOnlyRootFilesystem
-# is off — /tmp + HOME need writes; enable it only with emptyDir mounts at those paths.)
+# -- Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`.
 securityContext:
   runAsNonRoot: true
   runAsUser: 1000
@@ -91,7 +81,8 @@ securityContext:
       - ALL
   seccompProfile:
     type: RuntimeDefault
-# -- Extra pod annotations.
+
+# -- Pod annotations.
 podAnnotations: {}
 # -- Deployment annotations.
 deploymentAnnotations: {}
@@ -103,28 +94,22 @@ volumeMounts: []
 serviceAccount:
   # -- Create a ServiceAccount for the pod.
   create: false
-  # -- ServiceAccount name (generated from the fullname if empty and create=true).
+  # -- ServiceAccount name (default: the fullname when `create` is true).
   name: ""
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys ARE env var names. `AIDBOX_URL` points at
-# your Aidbox (the sibling `aidbox` chart in-cluster, or an existing external one). Uncomment
-# `AIDBOX_CLIENT_ID` to authenticate as a scoped least-privilege client (defaults to `root`).
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names.
 config:
   MLLP_HOST: "0.0.0.0"
   MLLP_PORT: "2575"
   AIDBOX_URL: "http://aidbox:8080"
-  # AIDBOX_CLIENT_ID: "root"
   INTERBOX_WORKSPACE_POLL_MS: "5000"
-  # INTERBOX_WORKSPACE_GIT_URL: "https://github.com/you/your-workspace"
 
-# -- Secret env → Secret (envFrom). Keys ARE env var names; only non-empty ones are written.
-# `DATABASE_URL` is required — its user needs `CREATEDB` (the engine self-creates the db);
-# add `?sslmode=require` for TLS. `AIDBOX_CLIENT_SECRET` if using Aidbox. The rest are optional.
-# `secrets.data.<KEY>` is deprecated; a flat key wins.
+# -- Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL`
+# is required. `secrets.data.<KEY>` is deprecated; a flat key wins.
 secrets:
-  # -- Use a pre-provisioned Secret instead of creating one from the keys below (External Secrets Operator, sealed-secrets, …).
+  # -- Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …).
   existingSecretName: ""
   DATABASE_URL: ""
   AIDBOX_CLIENT_SECRET: ""
@@ -133,54 +118,50 @@ secrets:
   ANTHROPIC_API_KEY: ""
   INTERBOX_WORKSPACE_GIT_KEY: ""
 
-# -- Extra ConfigMaps to load env from (envFrom) — extend the pod's env without editing the chart.
+# -- Extra ConfigMaps to load env from (envFrom).
 extraEnvFromConfigMaps: []
 # -- Extra Secrets to load env from (envFrom).
 extraEnvFromSecrets: []
 
 database:
-  # -- Engine self-creates the `interbox` db on boot when the DATABASE_URL user has `CREATEDB`.
-  # `false` → sets `INTERBOX_SKIP_ENSURE_DB`; pre-create the db yourself (locked-down managed PG).
+  # -- The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself.
   createDatabase: true
 
 service:
-  # -- Dashboard/API service type.
+  # -- Dashboard/API Service type.
   type: ClusterIP
   # -- Dashboard/API port.
   port: 3001
   # -- Dashboard/API Service annotations.
   annotations: {}
 
-# interbox is an INTERNAL tool — nothing faces the public internet. MLLP is fed over
-# VPN/VNet (transport-encrypted); the dashboard is cluster-internal.
 mllp:
-  # -- Expose MLLP (HL7v2 raw-TCP ingest).
+  # -- Expose MLLP (HL7v2 over raw TCP).
   enabled: true
   # -- MLLP TCP port.
   port: 2575
   service:
-    # -- MLLP service type. Raw TCP → LoadBalancer (HTTP ingress can't carry it).
+    # -- MLLP Service type. Raw TCP, so not an Ingress.
     type: LoadBalancer
-    # -- Request a private LB (senders reach it over VPN/VNet). Cloud annotation supplied via overlay.
+    # -- Shown in the install notes only. The cloud annotation makes the LB private (see values-aks.yaml).
     internal: true
-    # -- Extra Service annotations (e.g. AKS internal-LB + tcp-idle-timeout — see values-aks.yaml).
+    # -- MLLP Service annotations.
     annotations: {}
-    # -- Preserve the sender's source IP + skip the extra node hop (single-replica-safe). "" = Cluster.
+    # -- `Local` keeps the sender's source IP. Empty = `Cluster`.
     externalTrafficPolicy: Local
-    # -- Pin the LB IP so it survives reinstall (stable VPN/firewall target). Must be a free subnet IP; empty = dynamic.
+    # -- Static LB IP, a stable VPN/firewall target. Empty = dynamic.
     loadBalancerIP: ""
-    # -- Restrict the LB to known sender subnets even inside the private network (defense-in-depth).
+    # -- Sender CIDRs allowed to reach the LB.
     loadBalancerSourceRanges: []
 
 ingress:
-  # -- Ingress for the dashboard/API. Enable ONLY with an internal ingress class — never public.
+  # -- Dashboard/API Ingress. Use an internal ingress class only; never expose it publicly.
   enabled: false
   # -- Ingress class name.
   className: ""
   # -- Ingress host.
   host: interbox.example.com
-  # -- Ingress path. Default `/` (works nginx / AGIC / modern ALB). AWS ALB + GKE gce
-  # prefer `/*` — pair it with pathType: ImplementationSpecific.
+  # -- Ingress path. AWS ALB and GKE gce want `/*` with `pathType: ImplementationSpecific`.
   path: /
   # -- Ingress pathType (Prefix | ImplementationSpecific | Exact).
   pathType: Prefix
