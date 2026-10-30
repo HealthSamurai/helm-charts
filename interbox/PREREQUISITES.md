@@ -31,6 +31,25 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 interbox can share a cluster with Aidbox as long as it gets its own `interbox` database
 there and leaves Aidbox's alone.
 
+**Databricks Lakebase.** interbox runs on Lakebase Autoscaling projects. A native Postgres
+role with a password needs nothing beyond a plain `DATABASE_URL`. To log in as a service
+principal, prepare the project as
+[Databricks Lakebase](https://www.health-samurai.io/docs/interbox/ops/lakebase) describes and
+set:
+
+```yaml
+config:
+  INTERBOX_DB_AUTH_METHOD: databricks-autoscale
+  INTERBOX_DB_DATABRICKS_HOST: https://<workspace>.cloud.databricks.com
+  INTERBOX_DB_DATABRICKS_CLIENT_ID: <application-id>
+  INTERBOX_DB_DATABRICKS_ENDPOINT: projects/<project>/branches/<branch>/endpoints/<endpoint>
+secrets:
+  INTERBOX_DB_DATABRICKS_CLIENT_SECRET: <postgres-scoped OAuth secret>
+  DATABASE_URL: postgres://<application-id>@ep-<name>.database.<region>.cloud.databricks.com/interbox?sslmode=verify-full
+```
+
+`DATABASE_URL` carries no password here. interbox fetches its own tokens.
+
 **Extension allowlists.** Some managed services refuse `CREATE EXTENSION` until the
 extension is allowlisted. Interbox checks before it migrates: it logs every missing
 extension with the exact `azure.extensions` value to set, exits, and the pod crash-loops
@@ -69,6 +88,7 @@ The keys are env var names:
 | `INTERBOX_LICENSE` | no | blank = activate via dashboard |
 | `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | no | dashboard assistant auth |
 | `INTERBOX_WORKSPACE_GIT_KEY` | no | private workspace repo access |
+| `INTERBOX_DB_DATABRICKS_CLIENT_SECRET` | on Lakebase as a service principal | the service principal's OAuth secret |
 
 ## 4. MLLP exposure
 
