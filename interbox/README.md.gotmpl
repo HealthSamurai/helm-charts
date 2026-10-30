@@ -166,6 +166,29 @@ deploymentAnnotations:
   secret.reloader.stakater.com/reload: interbox-secrets
 ```
 
+## NetworkPolicy
+
+Port `3001` serves the dashboard and its API, so close it to everything that has no reason
+to call it. `networkPolicy.enabled: true` adds an ingress-only NetworkPolicy:
+
+```yaml
+networkPolicy:
+  enabled: true
+  dashboardFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  mllpFrom:
+    - ipBlock:
+        cidr: 10.10.0.0/16
+```
+
+The dashboard port accepts only the `dashboardFrom` peers, none by default, and
+`kubectl port-forward` keeps working. The MLLP port accepts the `mllpFrom` peers, or any
+source when the list is empty, which leaves the filtering to `loadBalancerSourceRanges`. With
+`externalTrafficPolicy: Local` the pod sees the senders' own IPs, so `ipBlock` peers match
+them. Egress stays open, because the pod clones its workspace and reaches Postgres and Aidbox.
+
 ## Vertical Pod Autoscaler
 
 Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the

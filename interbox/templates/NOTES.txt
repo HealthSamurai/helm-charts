@@ -17,8 +17,12 @@ Dashboard and API:
 
 {{- if .Values.mllp.enabled }}
 
-MLLP (HL7v2 ingest), TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.type }}{{ if .Values.mllp.service.internal }} (internal){{ end }}:
+MLLP (HL7v2 ingest), TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.type }}:
   kubectl -n {{ .Release.Namespace }} get svc {{ include "interbox.fullname" . }}-mllp
+{{- if and (eq .Values.mllp.service.type "LoadBalancer") (not .Values.mllp.service.annotations) }}
+  WARNING: the MLLP Service has no annotations, so most clouds give this LoadBalancer a
+  public IP. Add the cloud's internal-LB annotation (values-aks.yaml does it on AKS).
+{{- end }}
 {{- end }}
 
 {{- with index .Values.config "AIDBOX_URL" }}

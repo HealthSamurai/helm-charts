@@ -166,6 +166,29 @@ deploymentAnnotations:
   secret.reloader.stakater.com/reload: interbox-secrets
 ```
 
+## NetworkPolicy
+
+Port `3001` serves the dashboard and its API, so close it to everything that has no reason
+to call it. `networkPolicy.enabled: true` adds an ingress-only NetworkPolicy:
+
+```yaml
+networkPolicy:
+  enabled: true
+  dashboardFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  mllpFrom:
+    - ipBlock:
+        cidr: 10.10.0.0/16
+```
+
+The dashboard port accepts only the `dashboardFrom` peers, none by default, and
+`kubectl port-forward` keeps working. The MLLP port accepts the `mllpFrom` peers, or any
+source when the list is empty, which leaves the filtering to `loadBalancerSourceRanges`. With
+`externalTrafficPolicy: Local` the pod sees the senders' own IPs, so `ipBlock` peers match
+them. Egress stays open, because the pod clones its workspace and reaches Postgres and Aidbox.
+
 ## Vertical Pod Autoscaler
 
 Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the
@@ -215,15 +238,18 @@ verticalPodAutoscaler:
 | ingress.tls | list | `[]` | Ingress TLS blocks. |
 | mllp.enabled | bool | `true` | Expose MLLP (HL7v2 over raw TCP). |
 | mllp.port | int | `2575` | MLLP TCP port. Match the port the workspace's MLLP source listens on. |
-| mllp.service.annotations | object | `{}` | MLLP Service annotations. |
+| mllp.service.annotations | object | `{}` | MLLP Service annotations. Without the cloud's internal-LB annotation (see values-aks.yaml), most clouds give the LoadBalancer a public IP. |
 | mllp.service.externalTrafficPolicy | string | `"Local"` | `Local` keeps the sender's source IP. Empty = `Cluster`. |
-| mllp.service.internal | bool | `true` | Shown in the install notes only. The cloud annotation makes the LB private (see values-aks.yaml). |
 | mllp.service.loadBalancerIP | string | `""` | Static LB IP, a stable VPN/firewall target. Empty = dynamic. Kubernetes deprecated the field; prefer a cloud annotation. |
 | mllp.service.loadBalancerSourceRanges | list | `[]` | Sender CIDRs allowed to reach the LB. |
 | mllp.service.type | string | `"LoadBalancer"` | MLLP Service type. Raw TCP, so not an Ingress. |
 | nameOverride | string | `""` | Override the chart name used in resource names. |
+| networkPolicy.dashboardFrom | list | `[]` | NetworkPolicyPeers allowed to reach the dashboard/API port. Empty = none; `kubectl port-forward` still works. |
+| networkPolicy.enabled | bool | `false` | Render an ingress-only NetworkPolicy for the pod. Egress stays open. |
+| networkPolicy.mllpFrom | list | `[]` | NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
+| priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
 | probe.path | string | `"/api/health"` | HTTP health path for all probes. |
 | probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |

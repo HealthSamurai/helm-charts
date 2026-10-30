@@ -66,6 +66,8 @@ nodeSelector: {}
 affinity: {}
 # -- Tolerations for scheduling.
 tolerations: []
+# -- Pod priority class, so the scheduler doesn't preempt the single pod for less important work.
+priorityClassName: ""
 
 # -- Don't mount the ServiceAccount token; interbox never calls the Kubernetes API.
 automountServiceAccountToken: false
@@ -155,9 +157,7 @@ mllp:
   service:
     # -- MLLP Service type. Raw TCP, so not an Ingress.
     type: LoadBalancer
-    # -- Shown in the install notes only. The cloud annotation makes the LB private (see values-aks.yaml).
-    internal: true
-    # -- MLLP Service annotations.
+    # -- MLLP Service annotations. Without the cloud's internal-LB annotation (see values-aks.yaml), most clouds give the LoadBalancer a public IP.
     annotations: {}
     # -- `Local` keeps the sender's source IP. Empty = `Cluster`.
     externalTrafficPolicy: Local
@@ -181,3 +181,11 @@ ingress:
   annotations: {}
   # -- Ingress TLS blocks.
   tls: []
+
+networkPolicy:
+  # -- Render an ingress-only NetworkPolicy for the pod. Egress stays open.
+  enabled: false
+  # -- NetworkPolicyPeers allowed to reach the dashboard/API port. Empty = none; `kubectl port-forward` still works.
+  dashboardFrom: []
+  # -- NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source.
+  mllpFrom: []
