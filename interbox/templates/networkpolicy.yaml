@@ -1,0 +1,35 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "interbox.fullname" . }}
+  labels:
+    {{- include "interbox.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "interbox.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  {{- if or .Values.networkPolicy.dashboardFrom .Values.mllp.enabled }}
+  ingress:
+    {{- with .Values.networkPolicy.dashboardFrom }}
+    - ports:
+        - port: http
+          protocol: TCP
+      from:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- if .Values.mllp.enabled }}
+    - ports:
+        - port: mllp
+          protocol: TCP
+      {{- with .Values.networkPolicy.mllpFrom }}
+      from:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+{{- end }}

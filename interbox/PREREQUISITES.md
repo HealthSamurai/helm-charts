@@ -1,24 +1,25 @@
-# interbox chart — prerequisites
+# interbox chart prerequisites
 
-interbox is the all-in-one Integration Engine (engine + API + dashboard). This
-chart deploys **only interbox**; Postgres and Aidbox are external dependencies you
-point it at.
+This chart deploys **only interbox**, the all-in-one integration engine with its API and
+dashboard. You point it at an external Postgres, and at Aidbox when your pipelines deliver
+to one.
 
 ## 1. Postgres
 
-interbox needs a Postgres database (its `interbox` database, with `pg_trgm` +
-`btree_gist`). Options:
+interbox needs its own `interbox` database on Postgres with the `pg_trgm` and `btree_gist`
+extensions, either managed or in-cluster:
 
-- **Managed** (recommended for prod) — Azure Database for PostgreSQL Flexible
-  Server, Cloud SQL, RDS, etc.
-- **In-cluster** — install the sibling [`postgres`](../postgres) chart.
+- **Managed**, recommended for prod: Azure Database for PostgreSQL Flexible Server, Cloud
+  SQL, RDS and the like.
+- **In-cluster**: install the sibling [`postgres`](../postgres) chart.
 
-The engine **self-creates** the `interbox` database on boot when the `DATABASE_URL`
-user has `CREATEDB` (extensions come from the migrations) — like Aidbox. So a single
-DSN with a CREATEDB user is all you need (`database.createDatabase=true`, default).
+Like Aidbox, the engine **creates** the `interbox` database on boot when the `DATABASE_URL`
+user has `CREATEDB`, and the migrations add the extensions. So one DSN with a `CREATEDB`
+user is all you need, which is the default (`database.createDatabase=true`).
 
-If your managed PG won't grant `CREATEDB`, set `database.createDatabase=false` (which
-sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips the bootstrap) and pre-create it:
+If your managed Postgres won't grant `CREATEDB`, set `database.createDatabase=false` and
+pre-create the database yourself. The flag sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips
+its bootstrap.
 
 ```sql
 CREATE DATABASE interbox;
@@ -28,51 +29,96 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 -- plus a role scoped to the interbox database for the app DSN
 ```
 
-interbox can share a cluster with Aidbox — just a dedicated `interbox` database on
-it (not Aidbox's own database).
+interbox can share a cluster with Aidbox as long as it gets its own `interbox` database
+there and leaves Aidbox's alone.
+
+**Databricks Lakebase.** interbox runs on Lakebase Autoscaling projects. A native Postgres
+role with a password needs nothing beyond a plain `DATABASE_URL`. To log in as a service
+principal, prepare the project as
+[Databricks Lakebase](https://www.health-samurai.io/docs/interbox/ops/lakebase) describes and
+set:
+
+```yaml
+config:
+  INTERBOX_DB_AUTH_METHOD: databricks-autoscale
+  INTERBOX_DB_DATABRICKS_HOST: https://<workspace>.cloud.databricks.com
+  INTERBOX_DB_DATABRICKS_CLIENT_ID: <application-id>
+  INTERBOX_DB_DATABRICKS_ENDPOINT: projects/<project>/branches/<branch>/endpoints/<endpoint>
+secrets:
+  INTERBOX_DB_DATABRICKS_CLIENT_SECRET: <postgres-scoped OAuth secret>
+  DATABASE_URL: postgres://<application-id>@ep-<name>.database.<region>.cloud.databricks.com/interbox?sslmode=verify-full
+```
+
+`DATABASE_URL` carries no password here. interbox fetches its own tokens.
 
 **Extension allowlists.** Some managed services refuse `CREATE EXTENSION` until the
 extension is allowlisted. Interbox checks before it migrates: it logs every missing
-extension with the exact `azure.extensions` value to set, exits, and the pod
-crash-loops until that is fixed. On Azure Flexible Server, put `pg_trgm,btree_gist`
-in the `azure.extensions` server parameter, plus Aidbox's (`unaccent`, `pgcrypto`,
-`pg_stat_statements`) if it shares the server. The value replaces the whole list,
-so keep any entries other products need. Full table, roles and the `az` command:
-[PostgreSQL extensions](https://www.health-samurai.io/docs/interbox/ops/sizing#postgresql-extensions).
+extension with the exact `azure.extensions` value to set, exits, and the pod crash-loops
+until that is fixed. On Azure Flexible Server, put `pg_trgm,btree_gist` in the
+`azure.extensions` server parameter. If Aidbox shares the server, add its `unaccent`,
+`pgcrypto` and `pg_stat_statements` too. The value replaces the whole list, so keep any
+entries other products need.
+[PostgreSQL extensions](https://www.health-samurai.io/docs/interbox/ops/sizing#postgresql-extensions)
+has the full table with roles and the `az` command.
 
 ## TLS to Postgres
 
-Put `sslmode` in the DSN. Default **`require`** (encrypts in transit — managed PG
-usually mandates it); use **`verify-full`** (+ the provider CA) to also block MITM.
-Drop it only when the path is already encrypted/trusted (VPN, or same private VNet):
+Put `sslmode` in the DSN. Use **`require`** by default because it encrypts in transit and
+managed Postgres usually demands it. **`verify-full`** with the provider's CA also blocks MITM.
+Drop `sslmode` only when the path is already encrypted or trusted, such as a VPN or the same
+private VNet:
 
     postgres://interbox:pass@host:5432/interbox?sslmode=require
 
 ## 2. Aidbox
 
-- **Already have one** — set `config.AIDBOX_URL` to it and `secrets.data.AIDBOX_CLIENT_SECRET`.
-- **Need one** — install the sibling [`aidbox`](../aidbox) chart, then point
-  `config.AIDBOX_URL` at its service (e.g. `http://aidbox:8080`).
+Optional. You need an Aidbox only when your pipelines deliver to it.
+
+- **Already have one**: set `config.AIDBOX_URL` to it and set `secrets.AIDBOX_CLIENT_SECRET`.
+- **Need one**: install the sibling [`aidbox`](../aidbox) chart, then point
+  `config.AIDBOX_URL` at its service, e.g. `http://aidbox:8080`.
 
 ## 3. Secrets
 
-Either let the chart create the Secret from `secrets.data`, or provision your own
-and set `secrets.existingSecretName`. Keys (env var names):
+Either let the chart create the Secret from the `secrets` keys, or provision your own
+(External Secrets Operator, Secrets Store CSI or similar) and set `secrets.existingSecretName`.
+The keys are env var names:
 
 | Key | Required | Purpose |
 |-----|----------|---------|
 | `DATABASE_URL` | yes | app connection to the `interbox` db; user needs `CREATEDB` (unless `createDatabase=false`) |
-| `AIDBOX_CLIENT_SECRET` | if using Aidbox | Aidbox client secret |
+| `INTERBOX_DB_DATABRICKS_CLIENT_SECRET` | on Lakebase as a service principal | the service principal's OAuth secret |
+| `INTERBOX_AUTH_ADMIN_PASSWORD` | unless `INTERBOX_AUTH_ADMIN_ENABLED` is `false` | local admin sign-in, 20 characters or more |
+| `INTERBOX_AUTH_CLIENT_SECRET` | with OIDC, if the client has one | OIDC client secret |
+| `INTERBOX_WORKSPACE_GIT_KEY` | for a private workspace repo | token or SSH key for the workspace repo |
 | `INTERBOX_LICENSE` | no | blank = activate via dashboard |
+| `AIDBOX_CLIENT_SECRET` | if using Aidbox | Aidbox client secret |
 | `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | no | dashboard assistant auth |
-| `INTERBOX_WORKSPACE_GIT_KEY` | no | private workspace repo access |
 
-## 4. MLLP exposure
+## 4. Workspace and dashboard sign-in
 
-MLLP (HL7v2) is raw TCP on `mllp.port` via a dedicated LoadBalancer. Default is an
-internal LB; supply the cloud annotation via an overlay (see `values-aks.yaml`).
+interbox loads its pipelines from a git repository, so set `config.INTERBOX_WORKSPACE_GIT_URL`.
+Without it the engine parks with "no workspace configured": the dashboard stays up, but no
+pipeline runs. A private repository also needs `secrets.INTERBOX_WORKSPACE_GIT_KEY`.
+[The Workspace](https://www.health-samurai.io/docs/interbox/ops/workspace) covers refs, access
+modes and keys.
 
-**Pin the LB IP** (`mllp.service.loadBalancerIP`) — a dynamic LB IP can change on
-reinstall and break the hospital's VPN/firewall config that targets it. Pinning a
-free subnet IP gives DevOps a stable address to build the VPN around (see the k8s
-deployment/networking notes).
+The dashboard needs `config.INTERBOX_PUBLIC_URL`, its browser-facing origin, and a way to sign
+in. The local admin account is on by default and needs `secrets.INTERBOX_AUTH_ADMIN_PASSWORD`.
+OIDC can sit next to it, and to sign in with OIDC only, set
+`config.INTERBOX_AUTH_ADMIN_ENABLED: "false"`. Until then the dashboard stays parked, though
+`/api/health` keeps answering.
+[Securing Dashboard Access](https://www.health-samurai.io/docs/interbox/ops/secure-access) has
+the settings.
+
+## 5. MLLP exposure
+
+MLLP (HL7v2) is raw TCP on `mllp.port`, served by a LoadBalancer of its own. Keep `mllp.port`
+equal to the port your workspace's MLLP source listens on. The chart
+doesn't make that LB internal by itself, and without a cloud annotation most clouds give it a
+public IP, so add the annotation in an overlay. On AKS, `values-aks.yaml` does it.
+
+**Pin the LB IP.** A dynamic IP can change on reinstall and break the hospital's VPN or
+firewall rules that target it, so pin a free subnet IP and give the network team a stable
+address. On AKS, use the `azure-load-balancer-ipv4` annotation from the README's AKS section
+instead of `mllp.service.loadBalancerIP`.

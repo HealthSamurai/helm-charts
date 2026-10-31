@@ -1,18 +1,17 @@
 {{ template "chart.header" . }}
 
-Integration Engine for Modern Healthcare Solutions — the all-in-one interbox
-(engine + API + dashboard). Ingests HL7v2 over MLLP and delivers FHIR to Aidbox.
+Integration Engine for Modern Healthcare Solutions. This chart deploys the all-in-one
+interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
+example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
 {{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
 
-## Prerequisites
-
-interbox needs a **Postgres** database and an **Aidbox** endpoint — see
-[PREREQUISITES.md](./PREREQUISITES.md). Postgres and Aidbox are NOT bundled; install
-the sibling [`postgres`](../postgres) / [`aidbox`](../aidbox) charts if you need them
-in-cluster.
-
 ## Installation
+
+interbox needs a **Postgres** database. **Aidbox** is optional: you need one only when your
+pipelines deliver to it. The chart bundles neither, so see [PREREQUISITES.md](./PREREQUISITES.md)
+or install the sibling [`postgres`](../postgres) and [`aidbox`](../aidbox) charts if you want
+them in-cluster.
 
 ```console
 helm repo add healthsamurai https://healthsamurai.github.io/helm-charts
@@ -26,87 +25,185 @@ Minimal `values.yaml`:
 
 ```yaml
 config:
-  AIDBOX_URL: http://aidbox:8080          # your Aidbox (sibling chart or external)
+  INTERBOX_WORKSPACE_GIT_URL: https://github.com/<you>/<your-workspace>
+  INTERBOX_PUBLIC_URL: https://interbox.internal.example
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@pg:5432/interbox?sslmode=require   # user needs CREATEDB
+  INTERBOX_AUTH_ADMIN_PASSWORD: <20 characters or more>
 ```
 
-The dashboard + API serve on `3001`; MLLP (HL7v2) on TCP `2575` via a dedicated
-LoadBalancer. See [`values-aks.yaml`](./values-aks.yaml) for the Azure overlay.
+The workspace repository holds your pipelines. The dashboard needs its public URL and a way
+to sign in, and [PREREQUISITES.md](./PREREQUISITES.md) covers both.
+
+`secrets` takes env var names as keys, the same as `config`. The 0.1 shape
+`secrets.data.<KEY>` still works but is deprecated, and when a key is set both ways the flat
+value wins.
+
+The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
+of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
 
 ## Setup scenarios
 
-All snippets are the interbox values. Add `-f values-aks.yaml` for the internal MLLP
-LoadBalancer + pinned IP + idle-timeout on AKS. Aidbox/Postgres are external unless
-you install the sibling charts. Sibling service names depend on their release names —
-check their `helm install` output.
+Each snippet adds to the minimal values above, and on AKS you add `-f values-aks.yaml` as
+well. Aidbox and Postgres are external unless you install the sibling charts, whose service
+names depend on their release names, so check their `helm install` output.
 
-### 1. Existing Aidbox + managed Postgres (typical prod)
-interbox creates its own `interbox` database on your managed PG and delivers to your
+### 1. Existing Aidbox and managed Postgres (typical prod)
+
+interbox creates its own `interbox` database on your managed Postgres and delivers to your
 existing Aidbox.
+
 ```yaml
 config:
   AIDBOX_URL: https://aidbox.internal
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
-### 2. Existing Aidbox — reuse its Postgres cluster
-No separate DB server: interbox gets a dedicated `interbox` database on the same
-cluster Aidbox uses (not Aidbox's own database).
+### 2. Existing Aidbox, reusing its Postgres cluster
+
+There's no separate database server: interbox gets its own `interbox` database on the
+cluster Aidbox already uses, next to Aidbox's own database.
+
 ```yaml
 config:
   AIDBOX_URL: https://aidbox.internal
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@aidbox-pg:5432/interbox?sslmode=require
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@aidbox-pg:5432/interbox?sslmode=require
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
 
-### 3. No Aidbox / no Postgres yet — install the sibling charts (dev/stage)
+### 3. No Aidbox or Postgres yet: install the sibling charts (dev/stage)
+
 ```console
 helm install pg       healthsamurai/postgres -n interbox --create-namespace
 helm install aidbox   healthsamurai/aidbox   -n interbox
 helm install interbox healthsamurai/interbox -n interbox -f dev-values.yaml
 ```
-`dev-values.yaml` (point at the sibling charts' service names):
+
+`dev-values.yaml`, pointing at the sibling charts' service names:
+
 ```yaml
 config:
   AIDBOX_URL: http://aidbox:8080
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg-postgres:5432/interbox   # user needs CREATEDB
-    AIDBOX_CLIENT_SECRET: secret
+  DATABASE_URL: postgres://interbox:pass@pg-postgres:5432/interbox   # user needs CREATEDB
+  AIDBOX_CLIENT_SECRET: secret
 ```
 
-### 4. Locked-down managed PG (no admin grant)
-Pre-create the db + extensions yourself (see [PREREQUISITES.md](./PREREQUISITES.md));
-`createDatabase: false` sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips its bootstrap.
+### 4. Locked-down managed Postgres (no admin grant)
+
+Pre-create the database and its extensions yourself as [PREREQUISITES.md](./PREREQUISITES.md)
+describes. `createDatabase: false` sets `INTERBOX_SKIP_ENSURE_DB` so the engine skips its
+bootstrap.
+
 ```yaml
 database:
   createDatabase: false
 config:
   AIDBOX_URL: https://aidbox.internal
 secrets:
-  data:
-    DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
-    AIDBOX_CLIENT_SECRET: <aidbox client secret>
+  DATABASE_URL: postgres://interbox:pass@pg.internal:5432/interbox?sslmode=require
+  AIDBOX_CLIENT_SECRET: <aidbox client secret>
 ```
+
+## AKS
+
+[`values-aks.yaml`](./values-aks.yaml) makes the MLLP LoadBalancer internal and raises its TCP
+idle timeout. Add on top, as needed:
+
+```yaml
+mllp:
+  service:
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-ipv4: 10.20.0.5
+    loadBalancerSourceRanges:
+      - 10.10.0.0/16
+ingress:
+  enabled: true
+  className: nginx-internal
+  host: interbox.internal.example.com
+```
+
+- `azure-load-balancer-ipv4` pins the LB to a free IP in its subnet, so the VPN or firewall
+  target survives a reinstall. Use it instead of `mllp.service.loadBalancerIP`: Kubernetes
+  deprecated `spec.loadBalancerIP` in 1.24.
+- `loadBalancerSourceRanges` limits the LB to the sender subnets.
+- The dashboard stays private only behind an internal ingress class, one whose controller sits
+  behind an internal LB. Annotations on the Ingress itself don't make it internal.
+
+## Secrets from a vault
+
+`secrets.existingSecretName` takes any Secret you provision yourself, with External Secrets
+Operator, sealed-secrets or the [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/).
+The CSI driver creates the Secret that a `SecretProviderClass` syncs (`secretObjects`) only
+while a pod mounts its volume, so mount it:
+
+```yaml
+secrets:
+  existingSecretName: interbox-secrets
+volumes:
+  - name: kv-secrets
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: interbox-kv
+volumeMounts:
+  - name: kv-secrets
+    mountPath: /mnt/secrets
+    readOnly: true
+```
+
+The `checksum/*` pod annotations restart the pod when the chart's own ConfigMap or Secret
+changes. A Secret the chart doesn't render is invisible to it, so a rotated value only
+reaches the env after a restart, which [Reloader](https://github.com/stakater/Reloader) can
+do:
+
+```yaml
+deploymentAnnotations:
+  secret.reloader.stakater.com/reload: interbox-secrets
+```
+
+## NetworkPolicy
+
+Port `3001` serves the dashboard and its API, so close it to everything that has no reason
+to call it. `networkPolicy.enabled: true` adds an ingress-only NetworkPolicy:
+
+```yaml
+networkPolicy:
+  enabled: true
+  dashboardFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  mllpFrom:
+    - ipBlock:
+        cidr: 10.10.0.0/16
+```
+
+The dashboard port accepts only the `dashboardFrom` peers, none by default, and
+`kubectl port-forward` keeps working. The MLLP port accepts the `mllpFrom` peers, or any
+source when the list is empty, which leaves the filtering to `loadBalancerSourceRanges`. With
+`externalTrafficPolicy: Local` the pod sees the senders' own IPs, so `ipBlock` peers match
+them. Egress stays open, because the pod clones its workspace and reaches Postgres and Aidbox.
 
 ## Vertical Pod Autoscaler
 
 Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the
-Deployment; the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
-CRDs, recommender and admission controller. The default `updatePolicy.updateMode: Initial` applies the
-recommendation only when a pod is created and never evicts it: interbox runs a single pod
-that builds the workspace on boot, so an eviction is downtime. A new recommendation therefore
-reaches the next pod only (`kubectl rollout restart deployment/interbox` applies it), and until
-VPA has a first one, pods keep plain `resources`. Every setting is a map key, so a
-per-environment overlay can change one (say `maxAllowed.memory`) without restating the rest.
+Deployment, and the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+CRDs, recommender and admission controller.
+
+The default `updatePolicy.updateMode: Initial` applies a recommendation only when a pod is
+created and never evicts it. interbox runs a single pod that builds the workspace on boot, so
+an eviction is downtime. A new recommendation therefore reaches only the next pod, and
+`kubectl rollout restart deployment/interbox` applies it now. Until VPA has a first
+recommendation, pods keep plain `resources`.
+
+Every setting is a map key, so a per-environment overlay can change one, say
+`maxAllowed.memory`, without restating the rest.
+
 ```yaml
 verticalPodAutoscaler:
   enabled: true
