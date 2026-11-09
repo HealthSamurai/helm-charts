@@ -69,26 +69,32 @@ spec:
           {{- with $probe.startup }}
           startupProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- with $probe.liveness }}
           livenessProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- with $probe.readiness }}
           readinessProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if gt (int .Values.preStopDelaySeconds) 0 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", {{ .Values.preStopDelaySeconds | quote }}]
           {{- end }}
           {{- with .Values.resources }}
           resources:

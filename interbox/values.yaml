@@ -20,7 +20,6 @@ image:
 imagePullSecrets: []
 
 probe:
-  # -- HTTP health path for all probes.
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
@@ -36,6 +35,7 @@ probe:
     failureThreshold: 3
   # -- Readiness probe.
   readiness:
+    path: /api/ready
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
@@ -45,6 +45,8 @@ strategy:
   type: Recreate
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
+
+preStopDelaySeconds: 5
 
 # -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none.
 resources: {}

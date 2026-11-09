@@ -2,7 +2,7 @@ apiVersion: v2
 name: interbox
 description: Integration Engine for Modern Healthcare Solutions
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: edge
 home: https://www.health-samurai.io/interbox
 icon: https://raw.githubusercontent.com/HealthSamurai/helm-charts/main/interbox/icon.png

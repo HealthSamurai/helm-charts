@@ -4,7 +4,7 @@ Integration Engine for Modern Healthcare Solutions. This chart deploys the all-i
 interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
 example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.2.1](https://img.shields.io/badge/Version-0.2.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -212,6 +212,20 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+## Health and readiness
+
+Startup and liveness use `/api/health`. Readiness uses `/api/ready`: `200` means
+API auth is configured correctly and the local engine is ready; `503` removes
+an unready pod from Service endpoints without restarting it. Keep liveness on
+`/api/health` to avoid restart loops during workspace errors or database outages.
+Readiness does not check downstream delivery.
+
+Each probe can override `path`; otherwise it uses `probe.path`. For older images
+without `/api/ready`, set `probe.readiness.path: /api/health`.
+
+Shutdown waits `preStopDelaySeconds` (5s) for routing updates; `0` disables it.
+This delay is part of `terminationGracePeriodSeconds`.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -249,10 +263,11 @@ verticalPodAutoscaler:
 | networkPolicy.mllpFrom | list | `[]` | NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
+| preStopDelaySeconds | int | `5` |  |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
-| probe.path | string | `"/api/health"` | HTTP health path for all probes. |
-| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
+| probe.path | string | `"/api/health"` |  |
+| probe.readiness | object | `{"failureThreshold":3,"path":"/api/ready","periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Keep at 1: the pod runs a single MLLP listener. |

@@ -212,4 +212,18 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+## Health and readiness
+
+Startup and liveness use `/api/health`. Readiness uses `/api/ready`: `200` means
+API auth is configured correctly and the local engine is ready; `503` removes
+an unready pod from Service endpoints without restarting it. Keep liveness on
+`/api/health` to avoid restart loops during workspace errors or database outages.
+Readiness does not check downstream delivery.
+
+Each probe can override `path`; otherwise it uses `probe.path`. For older images
+without `/api/ready`, set `probe.readiness.path: /api/health`.
+
+Shutdown waits `preStopDelaySeconds` (5s) for routing updates; `0` disables it.
+This delay is part of `terminationGracePeriodSeconds`.
+
 {{ template "chart.valuesSection" . }}
