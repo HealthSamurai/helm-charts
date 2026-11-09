@@ -212,6 +212,25 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+## Gateway API
+
+Requires Gateway API CRDs, a controller and an existing Gateway whose HTTPS listener
+allows routes from the Interbox namespace. TLS is configured on that Gateway.
+Ingress auth annotations do not apply to HTTPRoute.
+
+```yaml
+ingress:
+  enabled: false
+route:
+  main:
+    enabled: true
+    parentRefs:
+      - name: internal-gateway
+        namespace: gateway-system
+        sectionName: https
+    hostnames: [interbox.internal.example]
+```
+
 ## Health and readiness
 
 Startup and liveness use `/api/health`. Readiness uses `/api/ready`: `200` means

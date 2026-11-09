@@ -4,7 +4,7 @@ Integration Engine for Modern Healthcare Solutions. This chart deploys the all-i
 interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
 example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
-![Version: 0.2.1](https://img.shields.io/badge/Version-0.2.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -212,6 +212,25 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+## Gateway API
+
+Requires Gateway API CRDs, a controller and an existing Gateway whose HTTPS listener
+allows routes from the Interbox namespace. TLS is configured on that Gateway.
+Ingress auth annotations do not apply to HTTPRoute.
+
+```yaml
+ingress:
+  enabled: false
+route:
+  main:
+    enabled: true
+    parentRefs:
+      - name: internal-gateway
+        namespace: gateway-system
+        sectionName: https
+    hostnames: [interbox.internal.example]
+```
+
 ## Health and readiness
 
 Startup and liveness use `/api/health`. Readiness uses `/api/ready`: `200` means
@@ -272,6 +291,17 @@ This delay is part of `terminationGracePeriodSeconds`.
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Keep at 1: the pod runs a single MLLP listener. |
 | resources | object | `{}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. |
+| route.main.additionalRules | list | `[]` |  |
+| route.main.annotations | object | `{}` |  |
+| route.main.enabled | bool | `false` |  |
+| route.main.filters | list | `[]` |  |
+| route.main.hostnames | list | `[]` |  |
+| route.main.httpsRedirect | bool | `false` |  |
+| route.main.labels | object | `{}` |  |
+| route.main.matches[0].path.type | string | `"PathPrefix"` |  |
+| route.main.matches[0].path.value | string | `"/"` |  |
+| route.main.parentRefs | list | `[]` |  |
+| route.main.timeouts | object | `{}` |  |
 | secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` unless `INTERBOX_AUTH_ADMIN_ENABLED` is `false` (OIDC only; see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |

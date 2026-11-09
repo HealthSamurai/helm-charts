@@ -185,6 +185,22 @@ ingress:
   # -- Ingress TLS blocks.
   tls: []
 
+route:
+  main:
+    enabled: false
+    parentRefs: []
+    hostnames: []
+    annotations: {}
+    labels: {}
+    matches:
+      - path:
+          type: PathPrefix
+          value: /
+    filters: []
+    timeouts: {}
+    additionalRules: []
+    httpsRedirect: false
+
 networkPolicy:
   # -- Render an ingress-only NetworkPolicy for the pod. Egress stays open.
   enabled: false
