@@ -293,7 +293,7 @@ This delay is part of `terminationGracePeriodSeconds`.
 | probe.readiness | object | `{"failureThreshold":3,"path":"/api/ready","periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
-| replicaCount | int | `1` | Pod replicas. Keep at 1: the pod runs a single MLLP listener. |
+| replicaCount | int | `1` | Pod replicas. Defaults to 1; coordinated engine versions support multiple replicas. |
 | resources | object | `{}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. |
 | route.main.additionalRules | list | `[]` |  |
 | route.main.annotations | object | `{}` |  |
@@ -315,7 +315,7 @@ This delay is part of `terminationGracePeriodSeconds`.
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
 | serviceAccount.create | bool | `false` | Create a ServiceAccount for the pod. |
 | serviceAccount.name | string | `""` | ServiceAccount name (default: the fullname when `create` is true). |
-| strategy | object | `{"type":"Recreate"}` | Deployment strategy. `Recreate`: two pods must never run the MLLP listener at once. |
+| strategy | object | `{"type":"Recreate"}` | Deployment strategy. Use `Recreate` for the first upgrade from uncoordinated versions: stop all old engine and API pods before starting coordinated replicas. Later coordinated upgrades support `RollingUpdate`. |
 | terminationGracePeriodSeconds | int | `30` | Grace period for in-flight messages to persist and ACK before SIGKILL. |
 | tolerations | list | `[]` | Tolerations for scheduling. |
 | verticalPodAutoscaler.controlledResources | list | `[]` |  |
