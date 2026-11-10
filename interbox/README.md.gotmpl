@@ -212,6 +212,10 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+Each pod receives its UID as `INTERBOX_WORKSPACE_INSTANCE`, isolating its workspace
+cache path. Shared volumes must have space for separate per-pod caches; remove
+obsolete caches only after their pods have terminated.
+
 ## Gateway API
 
 Requires Gateway API CRDs, a controller and an existing Gateway whose HTTPS listener

@@ -52,6 +52,11 @@ spec:
               containerPort: {{ .Values.mllp.port }}
               protocol: TCP
             {{- end }}
+          env:
+            - name: INTERBOX_WORKSPACE_INSTANCE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config
