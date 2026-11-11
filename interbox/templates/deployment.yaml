@@ -53,6 +53,8 @@ spec:
               protocol: TCP
             {{- end }}
           env:
+            - name: INTERBOX_RUNTIME_CONFIG_MAPS
+              value: {{ $paths := list "/run/interbox-runtime-config/0" }}{{ range $index, $_ := .Values.extraEnvFromConfigMaps }}{{ $paths = append $paths (printf "/run/interbox-runtime-config/%d" (add1 $index)) }}{{ end }}{{ $paths | toJson | quote }}
             - name: INTERBOX_WORKSPACE_INSTANCE
               valueFrom:
                 fieldRef:
@@ -109,14 +111,30 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: interbox-runtime-config-0
+              mountPath: /run/interbox-runtime-config/0
+              readOnly: true
+            {{- range $index, $_ := .Values.extraEnvFromConfigMaps }}
+            - name: interbox-runtime-config-{{ add1 $index }}
+              mountPath: /run/interbox-runtime-config/{{ add1 $index }}
+              readOnly: true
+            {{- end }}
+            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            {{- end }}
       volumes:
+        - name: interbox-runtime-config-0
+          configMap:
+            name: {{ include "interbox.fullname" . }}-config
+        {{- range $index, $name := .Values.extraEnvFromConfigMaps }}
+        - name: interbox-runtime-config-{{ add1 $index }}
+          configMap:
+            name: {{ $name }}
+        {{- end }}
+        {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       restartPolicy: Always
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.nodeSelector }}

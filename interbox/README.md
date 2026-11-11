@@ -327,3 +327,19 @@ This delay is part of `terminationGracePeriodSeconds`.
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
+
+## Runtime configuration
+
+The chart automatically mounts the main ConfigMap and every `extraEnvFromConfigMaps`
+entry, in their existing override order. Supporting engine versions capture these values
+once at process startup and reject conflicts with Secret or other env overrides. Keep
+business settings, including destination and tenant, in ConfigMaps; keep credentials in
+Secrets. ConfigMap contents may be retained in the application database and must not
+contain secrets. Secret values are not included in this snapshot.
+
+Restart or roll out pods after ConfigMap or credential changes. External ConfigMap/Secret
+updates do not automatically trigger a rollout. Credentials must retain access to the same
+destination and tenant. This requires an engine and workspace SDK supporting runtime
+configuration snapshots; older images do not gain this protection from mounts alone.
+
+Chart regressions: `helm unittest interbox` with the helm-unittest plugin.
