@@ -53,8 +53,8 @@ spec:
               protocol: TCP
             {{- end }}
           env:
-            - name: INTERBOX_RUNTIME_CONFIG_MAPS
-              value: {{ $paths := list "/run/interbox-runtime-config/0" }}{{ range $index, $_ := .Values.extraEnvFromConfigMaps }}{{ $paths = append $paths (printf "/run/interbox-runtime-config/%d" (add1 $index)) }}{{ end }}{{ $paths | toJson | quote }}
+            - name: INTERBOX_RUNTIME_CONFIG_DIR
+              value: /run/interbox-runtime-config
             - name: INTERBOX_WORKSPACE_INSTANCE
               valueFrom:
                 fieldRef:
@@ -112,26 +112,22 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: interbox-runtime-config-0
-              mountPath: /run/interbox-runtime-config/0
+            - name: interbox-runtime-config
+              mountPath: /run/interbox-runtime-config
               readOnly: true
-            {{- range $index, $_ := .Values.extraEnvFromConfigMaps }}
-            - name: interbox-runtime-config-{{ add1 $index }}
-              mountPath: /run/interbox-runtime-config/{{ add1 $index }}
-              readOnly: true
-            {{- end }}
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
       volumes:
-        - name: interbox-runtime-config-0
-          configMap:
-            name: {{ include "interbox.fullname" . }}-config
-        {{- range $index, $name := .Values.extraEnvFromConfigMaps }}
-        - name: interbox-runtime-config-{{ add1 $index }}
-          configMap:
-            name: {{ $name }}
-        {{- end }}
+        - name: interbox-runtime-config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "interbox.fullname" . }}-config
+              {{- range .Values.extraEnvFromConfigMaps }}
+              - configMap:
+                  name: {{ . }}
+              {{- end }}
         {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

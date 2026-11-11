@@ -225,7 +225,8 @@ verticalPodAutoscaler:
 
 ## Runtime configuration
 
-The chart keeps `envFrom` and also mounts the main and extra ConfigMaps read-only.
+The chart keeps `envFrom` and projects the main and extra ConfigMaps into one
+read-only directory, passed to the engine through `INTERBOX_RUNTIME_CONFIG_DIR`.
 This identifies the settings replicas must agree on, separately from Secrets and
 pod metadata. A supporting engine/SDK captures them at startup and saves them in
 PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Later ConfigMaps
