@@ -212,15 +212,33 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
-Each pod receives its UID as `INTERBOX_WORKSPACE_INSTANCE`, isolating its workspace
-cache path. Shared volumes must have space for separate per-pod caches; remove
-obsolete caches only after their pods have terminated.
+## Pod lifecycle
+
+- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Delete old
+  shared-volume caches only after their pods stop.
+- Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
+  auth configuration and local engine, not downstream delivery. An unready pod loses
+  Service traffic without a restart. Old images need `probe.readiness.path: /api/health`.
+- Each probe can override `path`; otherwise it inherits `probe.path`.
+- `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
+  This counts toward `terminationGracePeriodSeconds`.
+
+## Runtime configuration
+
+The chart keeps `envFrom` and also mounts the main and extra ConfigMaps read-only.
+This identifies the settings replicas must agree on, separately from Secrets and
+pod metadata. A supporting engine/SDK captures them at startup and saves them in
+PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Later ConfigMaps
+win; conflicting Secret overrides reject startup. Credentials must authorize the
+configured destination and tenant.
+
+Users maintain no extra file. Restart to apply changes; external ConfigMap/Secret
+updates require a rollout.
 
 ## Gateway API
 
-Requires Gateway API CRDs, a controller and an existing Gateway whose HTTPS listener
-allows routes from the Interbox namespace. TLS is configured on that Gateway.
-Ingress auth annotations do not apply to HTTPRoute.
+Requires Gateway API CRDs/controller and a Gateway permitting this namespace.
+Configure TLS/auth on the Gateway; Ingress auth annotations do not transfer.
 
 ```yaml
 ingress:
@@ -235,32 +253,4 @@ route:
     hostnames: [interbox.internal.example]
 ```
 
-## Health and readiness
-
-Startup and liveness use `/api/health`. Readiness uses `/api/ready`: `200` means
-API auth is configured correctly and the local engine is ready; `503` removes
-an unready pod from Service endpoints without restarting it. Keep liveness on
-`/api/health` to avoid restart loops during workspace errors or database outages.
-Readiness does not check downstream delivery.
-
-Each probe can override `path`; otherwise it uses `probe.path`. For older images
-without `/api/ready`, set `probe.readiness.path: /api/health`.
-
-Shutdown waits `preStopDelaySeconds` (5s) for routing updates; `0` disables it.
-This delay is part of `terminationGracePeriodSeconds`.
-
 {{ template "chart.valuesSection" . }}
-
-## Runtime configuration
-
-The chart automatically mounts the main ConfigMap and every `extraEnvFromConfigMaps`
-entry, in their existing override order. Supporting engine versions capture these values
-once at process startup and reject conflicts with Secret or other env overrides. Keep
-business settings, including destination and tenant, in ConfigMaps; keep credentials in
-Secrets. ConfigMap contents may be retained in the application database and must not
-contain secrets. Secret values are not included in this snapshot.
-
-Restart or roll out pods after ConfigMap or credential changes. External ConfigMap/Secret
-updates do not automatically trigger a rollout. Credentials must retain access to the same
-destination and tenant. This requires an engine and workspace SDK supporting runtime
-configuration snapshots; older images do not gain this protection from mounts alone.
