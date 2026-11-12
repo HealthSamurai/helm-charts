@@ -214,8 +214,11 @@ verticalPodAutoscaler:
 
 ## Pod lifecycle
 
-- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Delete old
-  shared-volume caches only after their pods stop.
+- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
+  its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
+  checkout and a replaced pod starts clean. Set `workspaceCache.sizeLimit` to bound
+  it. With a volume of your own, delete old shared-volume caches only after their
+  pods stop.
 - Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
   auth configuration and local engine, not downstream delivery. An unready pod loses
   Service traffic without a restart. Old images need `probe.readiness.path: /api/health`.
@@ -332,3 +335,6 @@ route:
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
+| workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
+| workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
+| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `10Gi`. Kubernetes evicts a pod whose cache outgrows it. Empty = no limit. |

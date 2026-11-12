@@ -214,8 +214,11 @@ verticalPodAutoscaler:
 
 ## Pod lifecycle
 
-- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Delete old
-  shared-volume caches only after their pods stop.
+- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
+  its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
+  checkout and a replaced pod starts clean. Set `workspaceCache.sizeLimit` to bound
+  it. With a volume of your own, delete old shared-volume caches only after their
+  pods stop.
 - Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
   auth configuration and local engine, not downstream delivery. An unready pod loses
   Service traffic without a restart. Old images need `probe.readiness.path: /api/health`.

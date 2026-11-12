@@ -115,6 +115,10 @@ spec:
             - name: interbox-runtime-config
               mountPath: /run/interbox-runtime-config
               readOnly: true
+            {{- if .Values.workspaceCache.enabled }}
+            - name: interbox-workspace-cache
+              mountPath: {{ .Values.workspaceCache.mountPath }}
+            {{- end }}
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -128,6 +132,15 @@ spec:
               - configMap:
                   name: {{ . }}
               {{- end }}
+        {{- if .Values.workspaceCache.enabled }}
+        - name: interbox-workspace-cache
+          {{- with .Values.workspaceCache.sizeLimit }}
+          emptyDir:
+            sizeLimit: {{ . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
         {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
