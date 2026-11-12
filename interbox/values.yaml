@@ -48,8 +48,12 @@ terminationGracePeriodSeconds: 30
 
 preStopDelaySeconds: 5
 
-# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none.
-resources: {}
+# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk, and Kubernetes evicts a pod that outgrows the limit. Your keys merge with these; set one to `null` to drop it.
+resources:
+  requests:
+    ephemeral-storage: 1Gi
+  limits:
+    ephemeral-storage: 4Gi
 
 verticalPodAutoscaler:
   enabled: false
@@ -100,7 +104,7 @@ workspaceCache:
   enabled: true
   # -- Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`.
   mountPath: /tmp/interbox-engine
-  # -- `emptyDir.sizeLimit`, such as `10Gi`. Kubernetes evicts a pod whose cache outgrows it. Empty = no limit.
+  # -- `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage` bounds it.
   sizeLimit: ""
 
 serviceAccount:

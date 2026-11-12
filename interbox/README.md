@@ -216,9 +216,12 @@ verticalPodAutoscaler:
 
 - Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
   its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
-  checkout and a replaced pod starts clean. Set `workspaceCache.sizeLimit` to bound
-  it. With a volume of your own, delete old shared-volume caches only after their
-  pods stop.
+  checkout and a replaced pod starts clean. `resources` requests 1Gi of
+  `ephemeral-storage` and limits it to 4Gi for the cache, the container filesystem
+  and the logs together; raise both for a workspace with heavy dependencies.
+  Kubernetes evicts a pod that outgrows the limit, and its replacement starts with
+  an empty cache. With a volume of your own, delete old shared-volume caches only
+  after their pods stop.
 - Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
   auth configuration and local engine, not downstream delivery. An unready pod loses
   Service traffic without a restart. Old images need `probe.readiness.path: /api/health`.
@@ -302,7 +305,7 @@ route:
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Defaults to 1; coordinated engine versions support multiple replicas. |
-| resources | object | `{}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. |
+| resources | object | `{"limits":{"ephemeral-storage":"4Gi"},"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk, and Kubernetes evicts a pod that outgrows the limit. Your keys merge with these; set one to `null` to drop it. |
 | route.main.additionalRules | list | `[]` |  |
 | route.main.annotations | object | `{}` |  |
 | route.main.enabled | bool | `false` |  |
@@ -337,4 +340,4 @@ route:
 | volumes | list | `[]` | Extra pod volumes. |
 | workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
 | workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
-| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `10Gi`. Kubernetes evicts a pod whose cache outgrows it. Empty = no limit. |
+| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage` bounds it. |
