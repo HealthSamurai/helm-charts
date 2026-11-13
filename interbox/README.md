@@ -217,14 +217,14 @@ verticalPodAutoscaler:
 - Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
   its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
   checkout and a replaced pod starts clean. `resources` requests 1Gi of
-  `ephemeral-storage` and limits it to 4Gi for the cache, the container filesystem
-  and the logs together; raise both for a workspace with heavy dependencies.
-  Kubernetes evicts a pod that outgrows the limit, and its replacement starts with
-  an empty cache. With a volume of your own, delete old shared-volume caches only
+  `ephemeral-storage` for the cache, the container filesystem and the logs
+  together; raise it for a workspace with heavy dependencies. There is no limit by
+  default. With `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod
+  that outgrows it, and its replacement starts with an empty cache. With a volume of your own, delete old shared-volume caches only
   after their pods stop.
 - Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
   auth configuration and local engine, not downstream delivery. An unready pod loses
-  Service traffic without a restart. Old images need `probe.readiness.path: /api/health`.
+  Service traffic without a restart.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
   This counts toward `terminationGracePeriodSeconds`.
@@ -234,13 +234,19 @@ verticalPodAutoscaler:
 The chart keeps `envFrom` and projects the main and extra ConfigMaps into one
 read-only directory, passed to the engine through `INTERBOX_RUNTIME_CONFIG_DIR`.
 This identifies the settings replicas must agree on, separately from Secrets and
-pod metadata. A supporting engine/SDK captures them at startup and saves them in
+pod metadata. interbox 2.4.0 and later capture them at startup and saves them in
 PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Later ConfigMaps
 win; conflicting Secret overrides reject startup. Credentials must authorize the
 configured destination and tenant.
 
 Users maintain no extra file. Restart to apply changes; external ConfigMap/Secret
 updates require a rollout.
+
+Returning to an earlier image or to ConfigMap values that were active before is a
+rollback, and so is a `helm rollback` in most cases. The engine refuses it, and the
+pods stay NotReady, unless the same rollout sets a new value in
+`config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. With `Recreate` that means downtime, so
+set the intent before you roll back.
 
 ## Gateway API
 
@@ -304,8 +310,8 @@ route:
 | probe.readiness | object | `{"failureThreshold":3,"path":"/api/ready","periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
-| replicaCount | int | `1` | Pod replicas. Defaults to 1; coordinated engine versions support multiple replicas. |
-| resources | object | `{"limits":{"ephemeral-storage":"4Gi"},"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk, and Kubernetes evicts a pod that outgrows the limit. Your keys merge with these; set one to `null` to drop it. |
+| replicaCount | int | `1` | Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas. |
+| resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it. |
 | route.main.additionalRules | list | `[]` |  |
 | route.main.annotations | object | `{}` |  |
 | route.main.enabled | bool | `false` |  |
@@ -326,7 +332,7 @@ route:
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
 | serviceAccount.create | bool | `false` | Create a ServiceAccount for the pod. |
 | serviceAccount.name | string | `""` | ServiceAccount name (default: the fullname when `create` is true). |
-| strategy | object | `{"type":"Recreate"}` | Deployment strategy. Use `Recreate` for the first upgrade from uncoordinated versions: stop all old engine and API pods before starting coordinated replicas. Later coordinated upgrades support `RollingUpdate`. |
+| strategy | object | `{"type":"Recreate"}` | Deployment strategy. Use `Recreate` for the first upgrade to interbox 2.4.0 or later: stop all old engine and API pods before starting the new ones. Later upgrades from 2.4.0 on support `RollingUpdate`. |
 | terminationGracePeriodSeconds | int | `30` | Grace period for in-flight messages to persist and ACK before SIGKILL. |
 | tolerations | list | `[]` | Tolerations for scheduling. |
 | verticalPodAutoscaler.controlledResources | list | `[]` |  |
@@ -340,4 +346,4 @@ route:
 | volumes | list | `[]` | Extra pod volumes. |
 | workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
 | workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
-| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage` bounds it. |
+| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it. |

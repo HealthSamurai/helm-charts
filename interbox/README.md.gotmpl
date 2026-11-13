@@ -217,14 +217,14 @@ verticalPodAutoscaler:
 - Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
   its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
   checkout and a replaced pod starts clean. `resources` requests 1Gi of
-  `ephemeral-storage` and limits it to 4Gi for the cache, the container filesystem
-  and the logs together; raise both for a workspace with heavy dependencies.
-  Kubernetes evicts a pod that outgrows the limit, and its replacement starts with
-  an empty cache. With a volume of your own, delete old shared-volume caches only
+  `ephemeral-storage` for the cache, the container filesystem and the logs
+  together; raise it for a workspace with heavy dependencies. There is no limit by
+  default. With `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod
+  that outgrows it, and its replacement starts with an empty cache. With a volume of your own, delete old shared-volume caches only
   after their pods stop.
 - Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
   auth configuration and local engine, not downstream delivery. An unready pod loses
-  Service traffic without a restart. Old images need `probe.readiness.path: /api/health`.
+  Service traffic without a restart.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
   This counts toward `terminationGracePeriodSeconds`.
@@ -234,13 +234,19 @@ verticalPodAutoscaler:
 The chart keeps `envFrom` and projects the main and extra ConfigMaps into one
 read-only directory, passed to the engine through `INTERBOX_RUNTIME_CONFIG_DIR`.
 This identifies the settings replicas must agree on, separately from Secrets and
-pod metadata. A supporting engine/SDK captures them at startup and saves them in
+pod metadata. interbox 2.4.0 and later capture them at startup and saves them in
 PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Later ConfigMaps
 win; conflicting Secret overrides reject startup. Credentials must authorize the
 configured destination and tenant.
 
 Users maintain no extra file. Restart to apply changes; external ConfigMap/Secret
 updates require a rollout.
+
+Returning to an earlier image or to ConfigMap values that were active before is a
+rollback, and so is a `helm rollback` in most cases. The engine refuses it, and the
+pods stay NotReady, unless the same rollout sets a new value in
+`config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. With `Recreate` that means downtime, so
+set the intent before you roll back.
 
 ## Gateway API
 

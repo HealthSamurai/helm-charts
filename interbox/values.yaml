@@ -3,7 +3,7 @@ nameOverride: ""
 # -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. Defaults to 1; coordinated engine versions support multiple replicas.
+# -- Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas.
 replicaCount: 1
 
 image:
@@ -40,7 +40,7 @@ probe:
     timeoutSeconds: 3
     failureThreshold: 3
 
-# -- Deployment strategy. Use `Recreate` for the first upgrade from uncoordinated versions: stop all old engine and API pods before starting coordinated replicas. Later coordinated upgrades support `RollingUpdate`.
+# -- Deployment strategy. Use `Recreate` for the first upgrade to interbox 2.4.0 or later: stop all old engine and API pods before starting the new ones. Later upgrades from 2.4.0 on support `RollingUpdate`.
 strategy:
   type: Recreate
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
@@ -48,12 +48,10 @@ terminationGracePeriodSeconds: 30
 
 preStopDelaySeconds: 5
 
-# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk, and Kubernetes evicts a pod that outgrows the limit. Your keys merge with these; set one to `null` to drop it.
+# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it.
 resources:
   requests:
     ephemeral-storage: 1Gi
-  limits:
-    ephemeral-storage: 4Gi
 
 verticalPodAutoscaler:
   enabled: false
@@ -104,7 +102,7 @@ workspaceCache:
   enabled: true
   # -- Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`.
   mountPath: /tmp/interbox-engine
-  # -- `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage` bounds it.
+  # -- `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it.
   sizeLimit: ""
 
 serviceAccount:
