@@ -1,0 +1,154 @@
+# -- Override the chart name used in resource names.
+nameOverride: ""
+# -- Override the full resource name (default: the chart name).
+fullnameOverride: ""
+
+replicaCount: 1
+
+image:
+  # -- Image repository. The image is private: mirror it into your registry and point this there.
+  repository: us-east1-docker.pkg.dev/smartbox-477912/cms/coverage-kb
+  # -- Image tag (default: `.Chart.AppVersion`). Pin a `sha-<commit>` tag for real environments.
+  tag: ""
+  # -- Image digest; wins over `tag`.
+  digest: ""
+  # -- Image pull policy. `Always` refreshes the moving `edge` tag; use `IfNotPresent` once pinned.
+  pullPolicy: Always
+
+# -- Image pull secrets for a private registry.
+imagePullSecrets: []
+
+probe:
+  # -- Startup probe on `/livez`: the process is serving.
+  startup:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 30
+  # -- Liveness probe on `/livez`: always 200 while the process serves.
+  liveness:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # -- Readiness probe on `/health`: 503 until the KB corpus is loaded and Aidbox answers.
+  readiness:
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+terminationGracePeriodSeconds: 30
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+verticalPodAutoscaler:
+  enabled: false
+  controlledResources: []
+  controlledValues: ""
+  maxAllowed: {}
+  minAllowed: {}
+  updatePolicy:
+    updateMode: Initial
+    # -- Lets the updater act on a single pod. `null` keeps the VPA default (skip below 2 replicas).
+    minReplicas: 1
+
+nodeSelector: {}
+affinity: {}
+tolerations: []
+priorityClassName: ""
+
+# -- The service never calls the Kubernetes API.
+automountServiceAccountToken: false
+
+# -- Container securityContext. The image has no USER; the chart runs it as uid 1000 with a
+# read-only root filesystem and writable emptyDirs at `/tmp`, `/app/data` and `/app/.runtime`.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+podAnnotations: {}
+deploymentAnnotations: {}
+# -- Extra pod volumes.
+volumes: []
+# -- Extra container volume mounts.
+volumeMounts: []
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# -- Non-secret env → ConfigMap (envFrom). `CRD_PACKS` (the rule packs this deployment runs,
+# comma-separated) and `AIDBOX_BASE_URL` are required. Leave `CRD_SEED_FIXTURES` unset outside
+# demo stands: it writes the packs' made-up members and providers into Aidbox.
+config:
+  CRD_PACKS: ""
+  AIDBOX_BASE_URL: ""
+  AIDBOX_CLIENT_ID: coverage-kb
+  CDS_SOURCE_LABEL: ""
+  LOG_LEVEL: info
+
+# -- Secret env → Secret (envFrom); empty keys are skipped. `DATABASE_PG_URL`
+# (postgres://…/coverage_kb) is required. `AUTH_CLIENT_SECRET` only with the service UI login.
+secrets:
+  # -- Pre-provisioned Secret to use instead of rendering one (External Secrets, CSI driver, …).
+  existingSecretName: ""
+  DATABASE_PG_URL: ""
+  AIDBOX_CLIENT_SECRET: ""
+  AUTH_CLIENT_SECRET: ""
+
+# -- Extra ConfigMaps to load env from (envFrom).
+extraEnvFromConfigMaps: []
+# -- Extra Secrets to load env from (envFrom).
+extraEnvFromSecrets: []
+
+service:
+  type: ClusterIP
+  # -- Port of the CDS Hooks API (`/cds-services`) and the service UI.
+  port: 53917
+  annotations: {}
+
+# -- One-off Job that loads the Medicare Coverage Database dump into `coverage_kb`. It exits at
+# once when the corpus is already there. Until it has run, `/health` answers 503.
+kbRestore:
+  enabled: false
+  image: postgres:17-alpine
+  # -- pg_restore custom-format dump of the `mcd` schema. Needs egress, or point it at a copy you host.
+  dumpUrl: https://storage.googleapis.com/atomic-ehr-public/medicare-coverage-kb/mcd.dump
+  # -- Env for libpq: PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, PGSSLMODE. Use `envFrom` for the password.
+  env: []
+  envFrom: []
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+ingress:
+  # -- Ingress for the service UI (`/board`). prior-auth calls the service in-cluster and needs none.
+  enabled: false
+  className: ""
+  host: coverage-kb.example.com
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls: []
