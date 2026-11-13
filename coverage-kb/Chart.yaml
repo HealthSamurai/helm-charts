@@ -1,0 +1,14 @@
+apiVersion: v2
+name: coverage-kb
+description: CRD decision service for Prior Auth (coverage-kb) - answers CDS Hooks orders from the payer's rule packs and the Medicare Coverage Database
+type: application
+version: 0.1.0
+appVersion: edge
+home: https://www.health-samurai.io
+maintainers:
+  - name: Health Samurai
+keywords:
+  - crd
+  - cds-hooks
+  - prior-auth
+  - davinci

@@ -1,0 +1,19 @@
+{{- if not (index .Values.config "CRD_PACKS") }}
+{{- fail "config.CRD_PACKS is required: the rule packs this deployment runs (the image refuses to start without it)" }}
+{{- end }}
+{{- if not (index .Values.config "AIDBOX_BASE_URL") }}
+{{- fail "config.AIDBOX_BASE_URL is required" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coverage-kb.fullname" . }}-config
+  labels:
+    {{- include "coverage-kb.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.service.port | quote }}
+  {{- range $key, $value := .Values.config }}
+  {{- if and (ne $key "PORT") (not (kindIs "invalid" $value)) (ne (toString $value) "") }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}

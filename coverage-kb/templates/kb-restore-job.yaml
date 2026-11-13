@@ -1,0 +1,74 @@
+{{- if .Values.kbRestore.enabled }}
+{{- $kb := .Values.kbRestore }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "coverage-kb.fullname" . }}-kb-restore
+  labels:
+    {{- include "coverage-kb.labels" . | nindent 4 }}
+  annotations:
+    {{- /* A hook, so every install/upgrade gets a fresh Job instead of patching an immutable one. */}}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: {{ $kb.backoffLimit }}
+  ttlSecondsAfterFinished: {{ $kb.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "coverage-kb.selectorLabels" . | nindent 8 }}
+        job: kb-restore
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      containers:
+        - name: restore
+          image: {{ $kb.image }}
+          env:
+            - name: MCD_DUMP_URL
+              value: {{ $kb.dumpUrl | quote }}
+            {{- with $kb.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with $kb.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              if psql -tAc "select to_regclass('mcd.lcd_x_hcpc_code')" | grep -q .; then
+                echo "[kb] already loaded"; exit 0
+              fi
+              echo "[kb] downloading $MCD_DUMP_URL"
+              wget -q -O /tmp/mcd.dump "$MCD_DUMP_URL"
+              # The dump carries ParadeDB BM25 indexes; a stock Postgres skips them (KB search
+              # falls back to LIKE, decisions read plain tables). Verify the data, not the exit code.
+              pg_restore --no-owner --no-privileges -d "$PGDATABASE" /tmp/mcd.dump || true
+              rows=$(psql -tAc "select count(*) from mcd.lcd_x_hcpc_code")
+              [ "$rows" -gt 0 ] || { echo "[kb] restore failed: no hcpc rows"; exit 1; }
+              echo "[kb] restored: $rows hcpc rows"
+          {{- with $kb.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}
