@@ -4,7 +4,7 @@ Integration Engine for Modern Healthcare Solutions. This chart deploys the all-i
 interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
 example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -212,6 +212,60 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+## Pod lifecycle
+
+- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
+  its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
+  checkout and a replaced pod starts clean. `resources` requests 1Gi of
+  `ephemeral-storage` for the cache, the container filesystem and the logs
+  together; raise it for a workspace with heavy dependencies. There is no limit by
+  default. With `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod
+  that outgrows it, and its replacement starts with an empty cache. With a volume of your own, delete old shared-volume caches only
+  after their pods stop.
+- Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
+  auth configuration and local engine, not downstream delivery. An unready pod loses
+  Service traffic without a restart.
+- Each probe can override `path`; otherwise it inherits `probe.path`.
+- `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
+  This counts toward `terminationGracePeriodSeconds`.
+
+## Runtime configuration
+
+The chart keeps `envFrom` and projects the main and extra ConfigMaps into one
+read-only directory, passed to the engine through `INTERBOX_RUNTIME_CONFIG_DIR`.
+This identifies the settings replicas must agree on, separately from Secrets and
+pod metadata. interbox 2.4.0 and later capture them at startup and saves them in
+PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Later ConfigMaps
+win; conflicting Secret overrides reject startup. Credentials must authorize the
+configured destination and tenant.
+
+Users maintain no extra file. Restart to apply changes; external ConfigMap/Secret
+updates require a rollout.
+
+Returning to an earlier image or to ConfigMap values that were active before is a
+rollback, and so is a `helm rollback` in most cases. The engine refuses it, and the
+pods stay NotReady, unless the same rollout sets a new value in
+`config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. With `Recreate` that means downtime, so
+set the intent before you roll back.
+
+## Gateway API
+
+Requires Gateway API CRDs/controller and a Gateway permitting this namespace.
+Configure TLS/auth on the Gateway; Ingress auth annotations do not transfer.
+
+```yaml
+ingress:
+  enabled: false
+route:
+  main:
+    enabled: true
+    parentRefs:
+      - name: internal-gateway
+        namespace: gateway-system
+        sectionName: https
+    hostnames: [interbox.internal.example]
+```
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -249,14 +303,26 @@ verticalPodAutoscaler:
 | networkPolicy.mllpFrom | list | `[]` | NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
+| preStopDelaySeconds | int | `5` |  |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
-| probe.path | string | `"/api/health"` | HTTP health path for all probes. |
-| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
+| probe.path | string | `"/api/health"` |  |
+| probe.readiness | object | `{"failureThreshold":3,"path":"/api/ready","periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
-| replicaCount | int | `1` | Pod replicas. Keep at 1: the pod runs a single MLLP listener. |
-| resources | object | `{}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. |
+| replicaCount | int | `1` | Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas. |
+| resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it. |
+| route.main.additionalRules | list | `[]` |  |
+| route.main.annotations | object | `{}` |  |
+| route.main.enabled | bool | `false` |  |
+| route.main.filters | list | `[]` |  |
+| route.main.hostnames | list | `[]` |  |
+| route.main.httpsRedirect | bool | `false` |  |
+| route.main.labels | object | `{}` |  |
+| route.main.matches[0].path.type | string | `"PathPrefix"` |  |
+| route.main.matches[0].path.value | string | `"/"` |  |
+| route.main.parentRefs | list | `[]` |  |
+| route.main.timeouts | object | `{}` |  |
 | secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` unless `INTERBOX_AUTH_ADMIN_ENABLED` is `false` (OIDC only; see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |
@@ -266,7 +332,7 @@ verticalPodAutoscaler:
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
 | serviceAccount.create | bool | `false` | Create a ServiceAccount for the pod. |
 | serviceAccount.name | string | `""` | ServiceAccount name (default: the fullname when `create` is true). |
-| strategy | object | `{"type":"Recreate"}` | Deployment strategy. `Recreate`: two pods must never run the MLLP listener at once. |
+| strategy | object | `{"type":"Recreate"}` | Deployment strategy. Use `Recreate` for the first upgrade to interbox 2.4.0 or later: stop all old engine and API pods before starting the new ones. Later upgrades from 2.4.0 on support `RollingUpdate`. |
 | terminationGracePeriodSeconds | int | `30` | Grace period for in-flight messages to persist and ACK before SIGKILL. |
 | tolerations | list | `[]` | Tolerations for scheduling. |
 | verticalPodAutoscaler.controlledResources | list | `[]` |  |
@@ -278,3 +344,6 @@ verticalPodAutoscaler:
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
+| workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
+| workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
+| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it. |

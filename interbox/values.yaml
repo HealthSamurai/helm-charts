@@ -3,7 +3,7 @@ nameOverride: ""
 # -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. Keep at 1: the pod runs a single MLLP listener.
+# -- Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas.
 replicaCount: 1
 
 image:
@@ -20,7 +20,6 @@ image:
 imagePullSecrets: []
 
 probe:
-  # -- HTTP health path for all probes.
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
@@ -36,18 +35,23 @@ probe:
     failureThreshold: 3
   # -- Readiness probe.
   readiness:
+    path: /api/ready
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
 
-# -- Deployment strategy. `Recreate`: two pods must never run the MLLP listener at once.
+# -- Deployment strategy. Use `Recreate` for the first upgrade to interbox 2.4.0 or later: stop all old engine and API pods before starting the new ones. Later upgrades from 2.4.0 on support `RollingUpdate`.
 strategy:
   type: Recreate
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
 
-# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none.
-resources: {}
+preStopDelaySeconds: 5
+
+# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it.
+resources:
+  requests:
+    ephemeral-storage: 1Gi
 
 verticalPodAutoscaler:
   enabled: false
@@ -92,6 +96,14 @@ deploymentAnnotations: {}
 volumes: []
 # -- Extra container volume mounts.
 volumeMounts: []
+
+workspaceCache:
+  # -- Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own.
+  enabled: true
+  # -- Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`.
+  mountPath: /tmp/interbox-engine
+  # -- `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it.
+  sizeLimit: ""
 
 serviceAccount:
   # -- Create a ServiceAccount for the pod.
@@ -182,6 +194,22 @@ ingress:
   annotations: {}
   # -- Ingress TLS blocks.
   tls: []
+
+route:
+  main:
+    enabled: false
+    parentRefs: []
+    hostnames: []
+    annotations: {}
+    labels: {}
+    matches:
+      - path:
+          type: PathPrefix
+          value: /
+    filters: []
+    timeouts: {}
+    additionalRules: []
+    httpsRedirect: false
 
 networkPolicy:
   # -- Render an ingress-only NetworkPolicy for the pod. Egress stays open.
