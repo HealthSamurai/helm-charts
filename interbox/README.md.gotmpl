@@ -42,15 +42,15 @@ value wins.
 The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
 of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
 Webhooks are off by default. Set `webhook.enabled: true` when the workspace declares a
-`webhookSource`. The chart then gives `3002` a Service of its own, `interbox-webhook`, so
-in-cluster callers such as Aidbox reach a source at `http://interbox-webhook:3002/<path>`. That
-Service is always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches
-the webhooks through it. The engine listens for every `webhookSource` on that one port and
-tells them apart by their `path`. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from
-`webhook.port`, so change the port there. A different value in `config` or an extra ConfigMap
-rejects startup, and one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the
-variable. There, each webhook source names its own port, and only a source on `webhook.port`
-is reachable.
+`webhookSource` or a `pullSender`: the engine serves both on one port, `3002`, and tells them
+apart by their `path`. The chart then gives that port a Service of its own, `interbox-webhook`,
+so in-cluster callers reach a route at `http://interbox-webhook.<namespace>.svc:3002/<path>`:
+Aidbox posting to a webhook source, or the Aidbox App that polls a pull sender. That Service is
+always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches the port
+through it. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from `webhook.port`, so
+change the port there. A different value in `config` or an extra ConfigMap rejects startup, and
+one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the variable. There, each
+webhook source names its own port, and only a source on `webhook.port` is reachable.
 
 ## Setup scenarios
 

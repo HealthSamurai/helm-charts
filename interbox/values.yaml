@@ -20,6 +20,7 @@ image:
 imagePullSecrets: []
 
 probe:
+  # -- Default HTTP path for every probe. A probe's own `path` wins.
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
@@ -46,6 +47,7 @@ strategy:
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
 
+# -- Seconds the container sleeps in `preStop`, so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off.
 preStopDelaySeconds: 5
 
 # -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it.
@@ -145,7 +147,7 @@ secrets:
   CLAUDE_CODE_OAUTH_TOKEN: ""
   ANTHROPIC_API_KEY: ""
 
-# -- Extra ConfigMaps to load env from (envFrom).
+# -- Extra ConfigMaps to load env from (envFrom). The chart also mounts them into `INTERBOX_RUNTIME_CONFIG_DIR`, and the engine saves their values in PostgreSQL, so they must hold no secrets.
 extraEnvFromConfigMaps: []
 # -- Extra Secrets to load env from (envFrom).
 extraEnvFromSecrets: []
@@ -180,7 +182,7 @@ mllp:
     loadBalancerSourceRanges: []
 
 webhook:
-  # -- Expose the webhook port (HTTP POST intake): a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares a webhook source: while it is off, the engine still listens on 3002 for those sources, but no Service carries the port.
+  # -- Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on 3002 for them, but no Service carries the port.
   enabled: false
   # -- Webhook port. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from it. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored.
   port: 3002
@@ -203,18 +205,28 @@ ingress:
 
 route:
   main:
+    # -- Render a Gateway API HTTPRoute to the dashboard/API Service. Each key under `route` is one route; `main` takes the release's full name, others add `-<key>`. Needs the Gateway API CRDs and a Gateway.
     enabled: false
+    # -- Gateways the route attaches to.
     parentRefs: []
+    # -- Hostnames the route matches. Templated.
     hostnames: []
+    # -- Route annotations. Templated.
     annotations: {}
+    # -- Extra route labels.
     labels: {}
+    # -- Request matches of the rule that sends traffic to the Service.
     matches:
       - path:
           type: PathPrefix
           value: /
+    # -- Filters of the rule that sends traffic to the Service.
     filters: []
+    # -- Timeouts of the rule that sends traffic to the Service, e.g. `request: 10s`.
     timeouts: {}
+    # -- Rules rendered ahead of the rule to the Service. Templated.
     additionalRules: []
+    # -- Replace the rule to the Service with a 301 redirect to HTTPS, for a route on an HTTP listener.
     httpsRedirect: false
 
 networkPolicy:

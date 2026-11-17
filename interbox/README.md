@@ -42,15 +42,15 @@ value wins.
 The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
 of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
 Webhooks are off by default. Set `webhook.enabled: true` when the workspace declares a
-`webhookSource`. The chart then gives `3002` a Service of its own, `interbox-webhook`, so
-in-cluster callers such as Aidbox reach a source at `http://interbox-webhook:3002/<path>`. That
-Service is always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches
-the webhooks through it. The engine listens for every `webhookSource` on that one port and
-tells them apart by their `path`. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from
-`webhook.port`, so change the port there. A different value in `config` or an extra ConfigMap
-rejects startup, and one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the
-variable. There, each webhook source names its own port, and only a source on `webhook.port`
-is reachable.
+`webhookSource` or a `pullSender`: the engine serves both on one port, `3002`, and tells them
+apart by their `path`. The chart then gives that port a Service of its own, `interbox-webhook`,
+so in-cluster callers reach a route at `http://interbox-webhook.<namespace>.svc:3002/<path>`:
+Aidbox posting to a webhook source, or the Aidbox App that polls a pull sender. That Service is
+always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches the port
+through it. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from `webhook.port`, so
+change the port there. A different value in `config` or an extra ConfigMap rejects startup, and
+one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the variable. There, each
+webhook source names its own port, and only a source on `webhook.port` is reachable.
 
 ## Setup scenarios
 
@@ -292,7 +292,7 @@ route:
 | config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
-| extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). |
+| extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). The chart also mounts them into `INTERBOX_RUNTIME_CONFIG_DIR`, and the engine saves their values in PostgreSQL, so they must hold no secrets. |
 | extraEnvFromSecrets | list | `[]` | Extra Secrets to load env from (envFrom). |
 | fullnameOverride | string | `""` | Override the full resource name (default: the chart name). |
 | image.digest | string | `""` | Image digest; wins over `tag`. |
@@ -321,26 +321,25 @@ route:
 | networkPolicy.webhookFrom | list | `[]` | NetworkPolicyPeers allowed to reach the webhook port, e.g. the Aidbox pods. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
-| preStopDelaySeconds | int | `5` |  |
+| preStopDelaySeconds | int | `5` | Seconds the container sleeps in `preStop`, so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off. |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
-| probe.path | string | `"/api/health"` |  |
+| probe.path | string | `"/api/health"` | Default HTTP path for every probe. A probe's own `path` wins. |
 | probe.readiness | object | `{"failureThreshold":3,"path":"/api/ready","periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas. |
 | resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it. |
-| route.main.additionalRules | list | `[]` |  |
-| route.main.annotations | object | `{}` |  |
-| route.main.enabled | bool | `false` |  |
-| route.main.filters | list | `[]` |  |
-| route.main.hostnames | list | `[]` |  |
-| route.main.httpsRedirect | bool | `false` |  |
-| route.main.labels | object | `{}` |  |
-| route.main.matches[0].path.type | string | `"PathPrefix"` |  |
-| route.main.matches[0].path.value | string | `"/"` |  |
-| route.main.parentRefs | list | `[]` |  |
-| route.main.timeouts | object | `{}` |  |
+| route.main.additionalRules | list | `[]` | Rules rendered ahead of the rule to the Service. Templated. |
+| route.main.annotations | object | `{}` | Route annotations. Templated. |
+| route.main.enabled | bool | `false` | Render a Gateway API HTTPRoute to the dashboard/API Service. Each key under `route` is one route; `main` takes the release's full name, others add `-<key>`. Needs the Gateway API CRDs and a Gateway. |
+| route.main.filters | list | `[]` | Filters of the rule that sends traffic to the Service. |
+| route.main.hostnames | list | `[]` | Hostnames the route matches. Templated. |
+| route.main.httpsRedirect | bool | `false` | Replace the rule to the Service with a 301 redirect to HTTPS, for a route on an HTTP listener. |
+| route.main.labels | object | `{}` | Extra route labels. |
+| route.main.matches | list | `[{"path":{"type":"PathPrefix","value":"/"}}]` | Request matches of the rule that sends traffic to the Service. |
+| route.main.parentRefs | list | `[]` | Gateways the route attaches to. |
+| route.main.timeouts | object | `{}` | Timeouts of the rule that sends traffic to the Service, e.g. `request: 10s`. |
 | secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` unless `INTERBOX_AUTH_ADMIN_ENABLED` is `false` (OIDC only; see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |
@@ -362,7 +361,7 @@ route:
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
-| webhook.enabled | bool | `false` | Expose the webhook port (HTTP POST intake): a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares a webhook source: while it is off, the engine still listens on 3002 for those sources, but no Service carries the port. |
+| webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on 3002 for them, but no Service carries the port. |
 | webhook.port | int | `3002` | Webhook port. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from it. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored. |
 | workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
 | workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
