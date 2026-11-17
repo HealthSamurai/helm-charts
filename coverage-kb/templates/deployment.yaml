@@ -21,6 +21,9 @@ spec:
     metadata:
       labels:
         {{- include "coverage-kb.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       annotations:
         {{- /* Payload only: labels carry the chart version, so hashing them restarts pods on every chart bump. */}}
         checksum/config: {{ (include (print $.Template.BasePath "/configmap.yaml") . | fromYaml).data | toJson | sha256sum }}

@@ -18,11 +18,17 @@ spec:
       labels:
         {{- include "coverage-kb.selectorLabels" . | nindent 8 }}
         job: kb-restore
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       restartPolicy: OnFailure
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if include "coverage-kb.serviceAccountName" . }}
+      serviceAccountName: {{ include "coverage-kb.serviceAccountName" . }}
       {{- end }}
       automountServiceAccountToken: false
       containers:
@@ -43,15 +49,16 @@ spec:
             - -c
             - |
               set -e
-              if psql -tAc "select to_regclass('mcd.lcd_x_hcpc_code')" | grep -q .; then
+              db="${DATABASE_PG_URL:-$PGDATABASE}"
+              if psql -d "$db" -tAc "select to_regclass('mcd.lcd_x_hcpc_code')" | grep -q .; then
                 echo "[kb] already loaded"; exit 0
               fi
               echo "[kb] downloading $MCD_DUMP_URL"
               wget -q -O /tmp/mcd.dump "$MCD_DUMP_URL"
               # The dump carries ParadeDB BM25 indexes; a stock Postgres skips them (KB search
               # falls back to LIKE, decisions read plain tables). Verify the data, not the exit code.
-              pg_restore --no-owner --no-privileges -d "$PGDATABASE" /tmp/mcd.dump || true
-              rows=$(psql -tAc "select count(*) from mcd.lcd_x_hcpc_code")
+              pg_restore --no-owner --no-privileges -d "$db" /tmp/mcd.dump || true
+              rows=$(psql -d "$db" -tAc "select count(*) from mcd.lcd_x_hcpc_code")
               [ "$rows" -gt 0 ] || { echo "[kb] restore failed: no hcpc rows"; exit 1; }
               echo "[kb] restored: $rows hcpc rows"
           {{- with $kb.resources }}
@@ -68,7 +75,13 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- with $kb.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 {{- end }}

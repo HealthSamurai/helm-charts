@@ -83,6 +83,8 @@ securityContext:
     type: RuntimeDefault
 
 podAnnotations: {}
+# -- Extra pod labels, on the Deployment and the kb-restore Job (e.g. `azure.workload.identity/use: "true"`).
+podLabels: {}
 deploymentAnnotations: {}
 # -- Extra pod volumes.
 volumes: []
@@ -133,7 +135,10 @@ kbRestore:
   dumpUrl: https://storage.googleapis.com/atomic-ehr-public/medicare-coverage-kb/mcd.dump
   # -- Env for libpq: PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, PGSSLMODE. Use `envFrom` for the password.
   env: []
+  # -- With `DATABASE_PG_URL` in envFrom the Job connects through it; otherwise through the PG* variables.
   envFrom: []
+  # -- Mounts of the chart's `volumes` in the Job, e.g. the CSI volume that syncs the Secret it reads.
+  volumeMounts: []
   backoffLimit: 3
   ttlSecondsAfterFinished: 3600
   resources:
