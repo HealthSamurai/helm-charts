@@ -4,7 +4,7 @@ Integration Engine for Modern Healthcare Solutions. This chart deploys the all-i
 interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
 example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -41,6 +41,15 @@ value wins.
 
 The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
 of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
+Webhooks are off by default. Set `webhook.enabled: true` when the workspace declares a
+`webhookSource`. The chart then gives `3002` a Service of its own, `interbox-webhook`, so
+in-cluster callers such as Aidbox reach a source at `http://interbox-webhook:3002/<path>`. That
+Service is always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches
+the webhooks through it. The engine listens for every `webhookSource` on that one port and
+tells them apart by their `path`. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from
+`webhook.port`, so change the port there: the variable in `config` or `secrets` is overridden.
+Engine images up to `v2.3.0` ignore it. There, each webhook source names its own port, and only
+a source on `webhook.port` is reachable.
 
 ## Setup scenarios
 
@@ -181,13 +190,20 @@ networkPolicy:
   mllpFrom:
     - ipBlock:
         cidr: 10.10.0.0/16
+  webhookFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: aidbox
 ```
 
 The dashboard port accepts only the `dashboardFrom` peers, none by default, and
 `kubectl port-forward` keeps working. The MLLP port accepts the `mllpFrom` peers, or any
 source when the list is empty, which leaves the filtering to `loadBalancerSourceRanges`. With
 `externalTrafficPolicy: Local` the pod sees the senders' own IPs, so `ipBlock` peers match
-them. Egress stays open, because the pod clones its workspace and reaches Postgres and Aidbox.
+them. With `webhook.enabled`, the webhook port accepts the `webhookFrom` peers, or any source
+when the list is empty. A webhook source without a `secret` accepts every caller that reaches
+the port, so give it one or narrow `webhookFrom`. Egress stays open, because the pod clones its
+workspace and reaches Postgres and Aidbox.
 
 ## Vertical Pod Autoscaler
 
@@ -247,6 +263,7 @@ verticalPodAutoscaler:
 | networkPolicy.dashboardFrom | list | `[]` | NetworkPolicyPeers allowed to reach the dashboard/API port. Empty = none; `kubectl port-forward` still works. |
 | networkPolicy.enabled | bool | `false` | Render an ingress-only NetworkPolicy for the pod. Egress stays open. |
 | networkPolicy.mllpFrom | list | `[]` | NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source. |
+| networkPolicy.webhookFrom | list | `[]` | NetworkPolicyPeers allowed to reach the webhook port, e.g. the Aidbox pods. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
@@ -278,3 +295,5 @@ verticalPodAutoscaler:
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
+| webhook.enabled | bool | `false` | Expose the webhook port (HTTP POST intake): a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares a webhook source: while it is off, the engine still listens on 3002 for those sources, but no Service carries the port. |
+| webhook.port | int | `3002` | Webhook port. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from it, which overrides that variable in `config`, `secrets` and `extraEnvFrom*`. |

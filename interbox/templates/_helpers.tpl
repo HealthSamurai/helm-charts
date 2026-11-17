@@ -45,3 +45,22 @@ app: {{ include "interbox.fullname" . }}
 {{- printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) -}}
 {{- end -}}
 {{- end -}}
+
+{{/* The webhook port as a whole number; fails the render on a value the engine or the pod's other ports reject. */}}
+{{- define "interbox.webhookPort" -}}
+{{- $raw := toString .Values.webhook.port -}}
+{{- $port := 0 -}}
+{{- if regexMatch "^[0-9]{1,5}$" $raw -}}
+{{- $port = atoi $raw -}}
+{{- end -}}
+{{- if or (lt $port 1) (gt $port 65535) -}}
+{{- fail (printf "webhook.port must be a whole number from 1 to 65535, got %q" $raw) -}}
+{{- end -}}
+{{- if eq $port (int .Values.service.port) -}}
+{{- fail (printf "webhook.port %d is already taken by the dashboard/API port (service.port)" $port) -}}
+{{- end -}}
+{{- if and .Values.mllp.enabled (eq $port (int .Values.mllp.port)) -}}
+{{- fail (printf "webhook.port %d is already taken by the MLLP port (mllp.port)" $port) -}}
+{{- end -}}
+{{- $port -}}
+{{- end -}}

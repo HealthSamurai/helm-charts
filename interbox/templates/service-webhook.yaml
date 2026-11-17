@@ -1,0 +1,18 @@
+{{- if .Values.webhook.enabled }}
+{{- /* Always ClusterIP, apart from the dashboard's Service, so a change to service.type never publishes the webhooks. */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interbox.fullname" . }}-webhook
+  labels:
+    {{- include "interbox.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "interbox.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: webhook
+      protocol: TCP
+      port: {{ include "interbox.webhookPort" . }}
+      targetPort: webhook
+{{- end }}

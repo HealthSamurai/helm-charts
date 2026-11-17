@@ -167,6 +167,12 @@ mllp:
     # -- Sender CIDRs allowed to reach the LB.
     loadBalancerSourceRanges: []
 
+webhook:
+  # -- Expose the webhook port (HTTP POST intake): a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares a webhook source: while it is off, the engine still listens on 3002 for those sources, but no Service carries the port.
+  enabled: false
+  # -- Webhook port. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from it, which overrides that variable in `config`, `secrets` and `extraEnvFrom*`.
+  port: 3002
+
 ingress:
   # -- Dashboard/API Ingress. Use an internal ingress class only; never expose it publicly.
   enabled: false
@@ -190,3 +196,5 @@ networkPolicy:
   dashboardFrom: []
   # -- NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source.
   mllpFrom: []
+  # -- NetworkPolicyPeers allowed to reach the webhook port, e.g. the Aidbox pods. Empty = any source.
+  webhookFrom: []

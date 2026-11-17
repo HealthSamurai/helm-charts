@@ -25,6 +25,13 @@ MLLP (HL7v2 ingest), TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.typ
 {{- end }}
 {{- end }}
 
+{{- if .Values.webhook.enabled }}
+{{- $webhookPort := include "interbox.webhookPort" . }}
+
+Webhooks (HTTP POST), TCP {{ $webhookPort }} on the {{ include "interbox.fullname" . }}-webhook ClusterIP Service, in-cluster only:
+  http://{{ include "interbox.fullname" . }}-webhook.{{ .Release.Namespace }}.svc:{{ $webhookPort }}/<path of the webhookSource>
+{{- end }}
+
 {{- with index .Values.config "AIDBOX_URL" }}
 
 Aidbox: {{ . }}
