@@ -47,9 +47,9 @@ apart by their `path`. The chart then gives that port a Service of its own, `int
 so in-cluster callers reach a route at `http://interbox-webhook.<namespace>.svc:3002/<path>`:
 Aidbox posting to a webhook source, or the Aidbox App that polls a pull sender. That Service is
 always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches the port
-through it. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from `webhook.port`, so
-change the port there. A different value in `config` or an extra ConfigMap rejects startup, and
-one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the variable. There, each
+through it. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from `webhook.port`,
+so change the port there. A different value in `config` or an extra ConfigMap rejects startup,
+and one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the variable. There, each
 webhook source names its own port, and only a source on `webhook.port` is reachable.
 
 ## Setup scenarios
@@ -237,11 +237,19 @@ verticalPodAutoscaler:
   `ephemeral-storage` for the cache, the container filesystem and the logs
   together; raise it for a workspace with heavy dependencies. There is no limit by
   default. With `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod
-  that outgrows it, and its replacement starts with an empty cache. With a volume of your own, delete old shared-volume caches only
-  after their pods stop.
+  that outgrows it, and its replacement starts with an empty cache. A limit below
+  the 1Gi request makes Kubernetes reject the pod, so lower
+  `resources.requests.ephemeral-storage` with it. With a volume of your own, delete
+  old shared-volume caches only after their pods stop.
 - Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
   auth configuration and local engine, not downstream delivery. An unready pod loses
   Service traffic without a restart.
+- `/api/ready` stays unready until the engine holds a valid license and runs at least
+  one pipeline. A fresh install without `secrets.INTERBOX_LICENSE`, or with an empty
+  workspace, therefore gets no traffic through the Service, Ingress or HTTPRoute, and
+  the dashboard where the license is activated is out of reach. Open it with
+  `kubectl port-forward deploy/<fullname> 3001`, or set
+  `probe.readiness.path: /api/health` until the license is in.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
   This counts toward `terminationGracePeriodSeconds`.
@@ -251,19 +259,29 @@ verticalPodAutoscaler:
 The chart keeps `envFrom` and projects the main and extra ConfigMaps into one
 read-only directory, passed to the engine through `INTERBOX_RUNTIME_CONFIG_DIR`.
 This identifies the settings replicas must agree on, separately from Secrets and
-pod metadata. interbox 2.4.0 and later capture them at startup and saves them in
-PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Later ConfigMaps
-win; conflicting Secret overrides reject startup. Credentials must authorize the
-configured destination and tenant.
+pod metadata. interbox 2.4.0 and later capture them at startup and save them in
+PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Every key must be a
+valid variable name, and `DATABASE_URL`, `INTERBOX_RUNTIME_CONFIG_DIR`,
+`INTERBOX_WORKSPACE_DIR`, `INTERBOX_WORKSPACE_INSTANCE` and `INTERBOX_INSTANCE_ID`
+stay out: the engine refuses to start otherwise. The chart checks `config` at render
+time; it cannot see the extra ConfigMaps.
+
+Later ConfigMaps win. A Secret that overrides a ConfigMap key with a different value
+rejects startup: `secrets` over `config`, or `extraEnvFromSecrets` over any ConfigMap.
+A `secrets` key that an extra ConfigMap also sets loses to it without an error,
+because `envFrom` loads the extra ConfigMaps after `secrets`. Credentials must
+authorize the configured destination and tenant.
 
 Users maintain no extra file. Restart to apply changes; external ConfigMap/Secret
 updates require a rollout.
 
 Returning to an earlier image or to ConfigMap values that were active before is a
-rollback, and so is a `helm rollback` in most cases. The engine refuses it, and the
-pods stay NotReady, unless the same rollout sets a new value in
-`config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. With `Recreate` that means downtime, so
-set the intent before you roll back.
+rollback. The engine refuses it, and the pods stay NotReady, unless the same rollout
+sets a new value in `config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. `helm rollback`
+replays the earlier revision's values as they were and cannot add one, so roll back
+with `helm upgrade` instead: the earlier values plus a new intent, for example
+`--set config.INTERBOX_RUNTIME_ROLLBACK_INTENT=rollback-1`. With `Recreate`, a
+refused rollout means downtime.
 
 ## Gateway API
 
@@ -289,7 +307,7 @@ route:
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
-| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
+| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` fails the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). The chart also mounts them into `INTERBOX_RUNTIME_CONFIG_DIR`, and the engine saves their values in PostgreSQL, so they must hold no secrets. |
@@ -329,7 +347,7 @@ route:
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas. |
-| resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it. |
+| resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it. |
 | route.main.additionalRules | list | `[]` | Rules rendered ahead of the rule to the Service. Templated. |
 | route.main.annotations | object | `{}` | Route annotations. Templated. |
 | route.main.enabled | bool | `false` | Render a Gateway API HTTPRoute to the dashboard/API Service. Each key under `route` is one route; `main` takes the release's full name, others add `-<key>`. Needs the Gateway API CRDs and a Gateway. |
@@ -361,8 +379,8 @@ route:
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
-| webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on 3002 for them, but no Service carries the port. |
-| webhook.port | int | `3002` | Webhook port. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from it. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored. |
+| webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port. |
+| webhook.port | int | `3002` | Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored. |
 | workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
 | workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
 | workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it. |

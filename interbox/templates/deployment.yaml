@@ -64,11 +64,9 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
-            {{- if .Values.webhook.enabled }}
-            {{- /* env beats envFrom, and a different value in a projected ConfigMap rejects startup, so the engine never leaves the Service's port. */}}
+            {{- /* Set even with webhook.enabled off: a Service named <release>-webhook makes Kubernetes inject INTERBOX_WEBHOOK_PORT=tcp://<ip>:<port> into every pod of the namespace, and the engine refuses that value. env also beats envFrom. */}}
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
-            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config

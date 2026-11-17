@@ -50,7 +50,7 @@ terminationGracePeriodSeconds: 30
 # -- Seconds the container sleeps in `preStop`, so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off.
 preStopDelaySeconds: 5
 
-# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it. Your keys merge with these; set one to `null` to drop it.
+# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it.
 resources:
   requests:
     ephemeral-storage: 1Gi
@@ -115,7 +115,7 @@ serviceAccount:
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` and
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` fails the render. `INTERBOX_WORKSPACE_GIT_URL` and
 # `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
 config:
   INTERBOX_WORKSPACE_POLL_MS: "5000"
@@ -182,9 +182,9 @@ mllp:
     loadBalancerSourceRanges: []
 
 webhook:
-  # -- Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on 3002 for them, but no Service carries the port.
+  # -- Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port.
   enabled: false
-  # -- Webhook port. The chart sets `INTERBOX_WEBHOOK_PORT` on the container from it. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored.
+  # -- Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored.
   port: 3002
 
 ingress:
