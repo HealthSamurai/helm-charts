@@ -57,12 +57,18 @@ spec:
               containerPort: {{ include "interbox.webhookPort" . }}
               protocol: TCP
             {{- end }}
-          {{- if .Values.webhook.enabled }}
-          {{- /* env beats envFrom, so config, secrets and extraEnvFrom* cannot move the engine off the Service's port. */}}
           env:
+            - name: INTERBOX_RUNTIME_CONFIG_DIR
+              value: /run/interbox-runtime-config
+            - name: INTERBOX_WORKSPACE_INSTANCE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            {{- if .Values.webhook.enabled }}
+            {{- /* env beats envFrom, and a different value in a projected ConfigMap rejects startup, so the engine never leaves the Service's port. */}}
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
-          {{- end }}
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config
@@ -80,26 +86,32 @@ spec:
           {{- with $probe.startup }}
           startupProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- with $probe.liveness }}
           livenessProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- with $probe.readiness }}
           readinessProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if gt (int .Values.preStopDelaySeconds) 0 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", {{ .Values.preStopDelaySeconds | quote }}]
           {{- end }}
           {{- with .Values.resources }}
           resources:
@@ -109,14 +121,39 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: interbox-runtime-config
+              mountPath: /run/interbox-runtime-config
+              readOnly: true
+            {{- if .Values.workspaceCache.enabled }}
+            - name: interbox-workspace-cache
+              mountPath: {{ .Values.workspaceCache.mountPath }}
+            {{- end }}
+            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            {{- end }}
       volumes:
+        - name: interbox-runtime-config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "interbox.fullname" . }}-config
+              {{- range .Values.extraEnvFromConfigMaps }}
+              - configMap:
+                  name: {{ . }}
+              {{- end }}
+        {{- if .Values.workspaceCache.enabled }}
+        - name: interbox-workspace-cache
+          {{- with .Values.workspaceCache.sizeLimit }}
+          emptyDir:
+            sizeLimit: {{ . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+        {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       restartPolicy: Always
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.nodeSelector }}
