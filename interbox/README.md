@@ -252,7 +252,9 @@ verticalPodAutoscaler:
   `probe.readiness.path: /api/health` until the license is in.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
-  This counts toward `terminationGracePeriodSeconds`.
+  This counts toward `terminationGracePeriodSeconds`. The wait uses the kubelet's built-in
+  `preStop.sleep` action, so the image needs no `sleep` binary, but the cluster needs
+  Kubernetes 1.30 or later. On an older cluster set it to `0`.
 
 ## Runtime configuration
 
@@ -339,7 +341,7 @@ route:
 | networkPolicy.webhookFrom | list | `[]` | NetworkPolicyPeers allowed to reach the webhook port, e.g. the Aidbox pods. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
-| preStopDelaySeconds | int | `5` | Seconds the container sleeps in `preStop`, so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off. |
+| preStopDelaySeconds | int | `5` | Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off. |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
 | probe.path | string | `"/api/health"` | Default HTTP path for every probe. A probe's own `path` wins. |

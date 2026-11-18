@@ -252,7 +252,9 @@ verticalPodAutoscaler:
   `probe.readiness.path: /api/health` until the license is in.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
-  This counts toward `terminationGracePeriodSeconds`.
+  This counts toward `terminationGracePeriodSeconds`. The wait uses the kubelet's built-in
+  `preStop.sleep` action, so the image needs no `sleep` binary, but the cluster needs
+  Kubernetes 1.30 or later. On an older cluster set it to `0`.
 
 ## Runtime configuration
 

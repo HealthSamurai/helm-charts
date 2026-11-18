@@ -47,7 +47,7 @@ strategy:
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
 
-# -- Seconds the container sleeps in `preStop`, so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off.
+# -- Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off.
 preStopDelaySeconds: 5
 
 # -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it.

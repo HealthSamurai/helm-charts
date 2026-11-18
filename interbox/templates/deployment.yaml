@@ -108,8 +108,8 @@ spec:
           {{- if gt (int .Values.preStopDelaySeconds) 0 }}
           lifecycle:
             preStop:
-              exec:
-                command: ["sleep", {{ .Values.preStopDelaySeconds | quote }}]
+              sleep:
+                seconds: {{ int .Values.preStopDelaySeconds }}
           {{- end }}
           {{- with .Values.resources }}
           resources:
