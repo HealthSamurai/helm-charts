@@ -67,13 +67,19 @@ app: {{ include "interbox.fullname" . }}
 
 {{/* Fails the render on a `config` key the engine refuses in its runtime configuration directory: it would not start. */}}
 {{- define "interbox.checkConfig" -}}
-{{- $reserved := list "__proto__" "DATABASE_URL" "INTERBOX_RUNTIME_CONFIG_DIR" "INTERBOX_WORKSPACE_DIR" "INTERBOX_WORKSPACE_INSTANCE" "INTERBOX_INSTANCE_ID" -}}
-{{- range $key, $_ := .Values.config -}}
-{{- if not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" $key) -}}
-{{- fail (printf "config.%s: not a valid environment variable name; the engine refuses it in a ConfigMap and would not start" $key) -}}
+{{- $reserved := list "DATABASE_URL" "INTERBOX_RUNTIME_CONFIG_DIR" "INTERBOX_WORKSPACE_DIR" "INTERBOX_WORKSPACE_INSTANCE" "INTERBOX_INSTANCE_ID" -}}
+{{- range $key, $value := .Values.config -}}
+{{- if or (not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" $key)) (eq $key "__proto__") -}}
+{{- fail (printf "config.%s: not a valid configuration key; the engine refuses it in a ConfigMap and would not start" $key) -}}
 {{- end -}}
 {{- if has $key $reserved -}}
 {{- fail (printf "config.%s: the engine refuses this key in a ConfigMap and would not start; put it in secrets" $key) -}}
+{{- end -}}
+{{- if eq $key "INTERBOX_WEBHOOK_PORT" -}}
+{{- fail "config.INTERBOX_WEBHOOK_PORT: set webhook.port instead; the chart sets this variable on the container from it, and a different value in a ConfigMap stops the engine at startup" -}}
+{{- end -}}
+{{- if and (eq $key "INTERBOX_WORKSPACE_CACHE") $.Values.workspaceCache.enabled (ne (clean (toString $value)) (clean $.Values.workspaceCache.mountPath)) -}}
+{{- fail (printf "config.INTERBOX_WORKSPACE_CACHE %s differs from workspaceCache.mountPath %s; the cache would land in the container filesystem instead of the emptyDir volume. Set both to the same path" (toString $value) $.Values.workspaceCache.mountPath) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

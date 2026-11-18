@@ -48,9 +48,10 @@ so in-cluster callers reach a route at `http://interbox-webhook.<namespace>.svc:
 Aidbox posting to a webhook source, or the Aidbox App that polls a pull sender. That Service is
 always ClusterIP, whatever `service.type` is, so nothing outside the cluster reaches the port
 through it. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from `webhook.port`,
-so change the port there. A different value in `config` or an extra ConfigMap rejects startup,
-and one in `secrets` is ignored. Engine images up to `v2.3.0` ignore the variable. There, each
-webhook source names its own port, and only a source on `webhook.port` is reachable.
+so change the port there. `config.INTERBOX_WEBHOOK_PORT` fails the render, a different value
+in an extra ConfigMap rejects startup, and one in `secrets` is ignored. Engine images up to
+`v2.3.0` ignore the variable. There, each webhook source names its own port, and only a
+source on `webhook.port` is reachable.
 
 ## Setup scenarios
 
@@ -241,20 +242,20 @@ verticalPodAutoscaler:
   the 1Gi request makes Kubernetes reject the pod, so lower
   `resources.requests.ephemeral-storage` with it. With a volume of your own, delete
   old shared-volume caches only after their pods stop.
-- Startup/liveness use `/api/health`; readiness uses `/api/ready` to check the API's
-  auth configuration and local engine, not downstream delivery. An unready pod loses
-  Service traffic without a restart.
-- `/api/ready` stays unready until the engine holds a valid license and runs at least
-  one pipeline. A fresh install without `secrets.INTERBOX_LICENSE`, or with an empty
-  workspace, therefore gets no traffic through the Service, Ingress or HTTPRoute, and
-  the dashboard where the license is activated is out of reach. Open it with
-  `kubectl port-forward deploy/<fullname> 3001`, or set
-  `probe.readiness.path: /api/health` until the license is in.
+- All probes use `/api/health`, which answers while the API process runs. An unready
+  pod loses Service traffic without a restart.
+- Leave readiness off `/api/ready` for now. On interbox 2.4.0 it reports unready
+  without a valid license, with no pipelines, and while any pipeline is in backoff.
+  Kubernetes has no per-port readiness, so one failing pipeline takes the pod out of
+  the dashboard, MLLP and webhook Services at once: ingest stops for every pipeline,
+  and the dashboard goes away when it is needed to debug. Replicas run the same
+  workspace, so they fail together.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
-  This counts toward `terminationGracePeriodSeconds`. The wait uses the kubelet's built-in
-  `preStop.sleep` action, so the image needs no `sleep` binary, but the cluster needs
-  Kubernetes 1.30 or later. On an older cluster set it to `0`.
+  This counts toward `terminationGracePeriodSeconds`, so the chart refuses a delay
+  that is not below it. The wait uses the kubelet's built-in `preStop.sleep` action,
+  so the image needs no `sleep` binary, but the cluster needs Kubernetes 1.30 or
+  later. On an older cluster set it to `0`.
 
 ## Runtime configuration
 
@@ -266,7 +267,9 @@ PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Every key must 
 valid variable name, and `DATABASE_URL`, `INTERBOX_RUNTIME_CONFIG_DIR`,
 `INTERBOX_WORKSPACE_DIR`, `INTERBOX_WORKSPACE_INSTANCE` and `INTERBOX_INSTANCE_ID`
 stay out: the engine refuses to start otherwise. The chart checks `config` at render
-time; it cannot see the extra ConfigMaps.
+time; it cannot see the extra ConfigMaps. It also refuses `INTERBOX_WEBHOOK_PORT`
+(set `webhook.port`), and an `INTERBOX_WORKSPACE_CACHE` other than
+`workspaceCache.mountPath` while the cache volume is on.
 
 Later ConfigMaps win. A Secret that overrides a ConfigMap key with a different value
 rejects startup: `secrets` over `config`, or `extraEnvFromSecrets` over any ConfigMap.
@@ -278,7 +281,7 @@ Users maintain no extra file. Restart to apply changes; external ConfigMap/Secre
 updates require a rollout.
 
 Returning to an earlier image or to ConfigMap values that were active before is a
-rollback. The engine refuses it, and the pods stay NotReady, unless the same rollout
+rollback. The engine refuses it and runs no pipelines, unless the same rollout
 sets a new value in `config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. `helm rollback`
 replays the earlier revision's values as they were and cannot add one, so roll back
 with `helm upgrade` instead: the earlier values plus a new intent, for example
@@ -309,7 +312,7 @@ route:
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
-| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` fails the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
+| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` and `INTERBOX_WEBHOOK_PORT` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). The chart also mounts them into `INTERBOX_RUNTIME_CONFIG_DIR`, and the engine saves their values in PostgreSQL, so they must hold no secrets. |
@@ -341,11 +344,11 @@ route:
 | networkPolicy.webhookFrom | list | `[]` | NetworkPolicyPeers allowed to reach the webhook port, e.g. the Aidbox pods. Empty = any source. |
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
-| preStopDelaySeconds | int | `5` | Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds`; `0` turns it off. |
+| preStopDelaySeconds | int | `5` | Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds` and must stay below it; `0` turns it off. |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
 | probe.path | string | `"/api/health"` | Default HTTP path for every probe. A probe's own `path` wins. |
-| probe.readiness | object | `{"failureThreshold":3,"path":"/api/ready","periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. |
+| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. `/api/ready` on interbox 2.4.0 turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas. |
@@ -358,7 +361,7 @@ route:
 | route.main.httpsRedirect | bool | `false` | Replace the rule to the Service with a 301 redirect to HTTPS, for a route on an HTTP listener. |
 | route.main.labels | object | `{}` | Extra route labels. |
 | route.main.matches | list | `[{"path":{"type":"PathPrefix","value":"/"}}]` | Request matches of the rule that sends traffic to the Service. |
-| route.main.parentRefs | list | `[]` | Gateways the route attaches to. |
+| route.main.parentRefs | list | `[]` | Gateways the route attaches to. Required when `enabled`. |
 | route.main.timeouts | object | `{}` | Timeouts of the rule that sends traffic to the Service, e.g. `request: 10s`. |
 | secrets | object | `{"AIDBOX_CLIENT_SECRET":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_OAUTH_TOKEN":"","DATABASE_URL":"","INTERBOX_AUTH_ADMIN_PASSWORD":"","INTERBOX_AUTH_CLIENT_SECRET":"","INTERBOX_DB_DATABRICKS_CLIENT_SECRET":"","INTERBOX_LICENSE":"","INTERBOX_WORKSPACE_GIT_KEY":"","existingSecretName":""}` | Secret env → Secret (envFrom). Keys are env var names; empty ones are skipped. `DATABASE_URL` is required. The dashboard also needs `INTERBOX_AUTH_ADMIN_PASSWORD` unless `INTERBOX_AUTH_ADMIN_ENABLED` is `false` (OIDC only; see PREREQUISITES.md). `secrets.data.<KEY>` is deprecated; a flat key wins. |
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
@@ -382,7 +385,7 @@ route:
 | volumeMounts | list | `[]` | Extra container volume mounts. |
 | volumes | list | `[]` | Extra pod volumes. |
 | webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port. |
-| webhook.port | int | `3002` | Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: a different value in a ConfigMap rejects startup, and one in a Secret is ignored. |
+| webhook.port | int | `3002` | Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: `config.INTERBOX_WEBHOOK_PORT` fails the render, a different value in an extra ConfigMap rejects startup, and one in a Secret is ignored. |
 | workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
-| workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. Keep it equal to `INTERBOX_WORKSPACE_CACHE` when `config` sets one; the engine's default is `/tmp/interbox-engine`. |
+| workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. A different `config.INTERBOX_WORKSPACE_CACHE` fails the render; the engine's default is `/tmp/interbox-engine`. |
 | workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it. |

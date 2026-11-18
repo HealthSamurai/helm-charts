@@ -39,7 +39,10 @@ Aidbox: {{ . }}
 
 {{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 
-License: not set. Activate it in the dashboard. Until then the pod stays NotReady and the
-Service carries no traffic, so open the dashboard with:
+License: not set. Activate it in the dashboard.
+{{- if eq ((.Values.probe.readiness | default dict).path | default .Values.probe.path) "/api/ready" }}
+Until then /api/ready keeps the pod NotReady and the Service carries no traffic,
+so open the dashboard with:
   kubectl -n {{ .Release.Namespace }} port-forward deploy/{{ include "interbox.fullname" . }} {{ .Values.service.port }}
+{{- end }}
 {{- end }}
