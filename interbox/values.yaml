@@ -3,7 +3,7 @@ nameOverride: ""
 # -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. Keep at 1: the pod runs a single MLLP listener.
+# -- Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas.
 replicaCount: 1
 
 image:
@@ -20,7 +20,7 @@ image:
 imagePullSecrets: []
 
 probe:
-  # -- HTTP health path for all probes.
+  # -- Default HTTP path for every probe. A probe's own `path` wins.
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
@@ -34,20 +34,25 @@ probe:
     periodSeconds: 20
     timeoutSeconds: 5
     failureThreshold: 3
-  # -- Readiness probe.
+  # -- Readiness probe. It inherits `probe.path`. `/api/ready` from interbox 2.4.0 on turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README.
   readiness:
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
 
-# -- Deployment strategy. `Recreate`: two pods must never run the MLLP listener at once.
+# -- Deployment strategy. Use `Recreate` for the first upgrade to interbox 2.4.0 or later: stop all old engine and API pods before starting the new ones. Later upgrades from 2.4.0 on support `RollingUpdate`.
 strategy:
   type: Recreate
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
 
-# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none.
-resources: {}
+# -- Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds` and must stay below it; `0` turns it off.
+preStopDelaySeconds: 5
+
+# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it.
+resources:
+  requests:
+    ephemeral-storage: 1Gi
 
 verticalPodAutoscaler:
   enabled: false
@@ -93,6 +98,14 @@ volumes: []
 # -- Extra container volume mounts.
 volumeMounts: []
 
+workspaceCache:
+  # -- Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own.
+  enabled: true
+  # -- Where to mount it. A different `config.INTERBOX_WORKSPACE_CACHE` fails the render; the engine's default is `/tmp/interbox-engine`.
+  mountPath: /tmp/interbox-engine
+  # -- `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it.
+  sizeLimit: ""
+
 serviceAccount:
   # -- Create a ServiceAccount for the pod.
   create: false
@@ -101,7 +114,7 @@ serviceAccount:
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys are env var names. `INTERBOX_WORKSPACE_GIT_URL` and
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` and `INTERBOX_WEBHOOK_PORT` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and
 # `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
 config:
   INTERBOX_WORKSPACE_POLL_MS: "5000"
@@ -133,7 +146,7 @@ secrets:
   CLAUDE_CODE_OAUTH_TOKEN: ""
   ANTHROPIC_API_KEY: ""
 
-# -- Extra ConfigMaps to load env from (envFrom).
+# -- Extra ConfigMaps to load env from (envFrom). The chart also mounts them into `INTERBOX_RUNTIME_CONFIG_DIR`, and the engine saves their values in PostgreSQL, so they must hold no secrets.
 extraEnvFromConfigMaps: []
 # -- Extra Secrets to load env from (envFrom).
 extraEnvFromSecrets: []
@@ -167,6 +180,12 @@ mllp:
     # -- Sender CIDRs allowed to reach the LB.
     loadBalancerSourceRanges: []
 
+webhook:
+  # -- Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port.
+  enabled: false
+  # -- Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: `config.INTERBOX_WEBHOOK_PORT` fails the render, a different value in an extra ConfigMap rejects startup, and one in a Secret is ignored.
+  port: 3002
+
 ingress:
   # -- Dashboard/API Ingress. Use an internal ingress class only; never expose it publicly.
   enabled: false
@@ -183,6 +202,32 @@ ingress:
   # -- Ingress TLS blocks.
   tls: []
 
+route:
+  main:
+    # -- Render a Gateway API HTTPRoute to the dashboard/API Service. Each key under `route` is one route; `main` takes the release's full name, others add `-<key>`. Needs the Gateway API CRDs and a Gateway.
+    enabled: false
+    # -- Gateways the route attaches to. Required when `enabled`.
+    parentRefs: []
+    # -- Hostnames the route matches. Templated.
+    hostnames: []
+    # -- Route annotations. Templated.
+    annotations: {}
+    # -- Extra route labels.
+    labels: {}
+    # -- Request matches of the rule that sends traffic to the Service.
+    matches:
+      - path:
+          type: PathPrefix
+          value: /
+    # -- Filters of the rule that sends traffic to the Service.
+    filters: []
+    # -- Timeouts of the rule that sends traffic to the Service, e.g. `request: 10s`.
+    timeouts: {}
+    # -- Rules rendered ahead of the rule to the Service. Templated.
+    additionalRules: []
+    # -- Replace the rule to the Service with a 301 redirect to HTTPS, for a route on an HTTP listener.
+    httpsRedirect: false
+
 networkPolicy:
   # -- Render an ingress-only NetworkPolicy for the pod. Egress stays open.
   enabled: false
@@ -190,3 +235,5 @@ networkPolicy:
   dashboardFrom: []
   # -- NetworkPolicyPeers allowed to reach the MLLP port. Empty = any source.
   mllpFrom: []
+  # -- NetworkPolicyPeers allowed to reach the webhook port, e.g. the Aidbox pods. Empty = any source.
+  webhookFrom: []

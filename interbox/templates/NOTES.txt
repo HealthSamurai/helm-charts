@@ -25,6 +25,13 @@ MLLP (HL7v2 ingest), TCP {{ .Values.mllp.port }} via {{ .Values.mllp.service.typ
 {{- end }}
 {{- end }}
 
+{{- if .Values.webhook.enabled }}
+{{- $webhookPort := include "interbox.webhookPort" . }}
+
+Webhook port (webhook sources and pull senders), TCP {{ $webhookPort }} on the {{ include "interbox.fullname" . }}-webhook ClusterIP Service, in-cluster only:
+  http://{{ include "interbox.fullname" . }}-webhook.{{ .Release.Namespace }}.svc:{{ $webhookPort }}/<path of the webhookSource or pullSender>
+{{- end }}
+
 {{- with index .Values.config "AIDBOX_URL" }}
 
 Aidbox: {{ . }}
@@ -33,4 +40,9 @@ Aidbox: {{ . }}
 {{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 
 License: not set. Activate it in the dashboard.
+{{- if eq ((.Values.probe.readiness | default dict).path | default .Values.probe.path) "/api/ready" }}
+Until then /api/ready keeps the pod NotReady and the Service carries no traffic,
+so open the dashboard with:
+  kubectl -n {{ .Release.Namespace }} port-forward deploy/{{ include "interbox.fullname" . }} {{ .Values.service.port }}
+{{- end }}
 {{- end }}

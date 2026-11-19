@@ -11,7 +11,7 @@ spec:
       {{- include "interbox.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
-  {{- if or .Values.networkPolicy.dashboardFrom .Values.mllp.enabled }}
+  {{- if or .Values.networkPolicy.dashboardFrom .Values.mllp.enabled .Values.webhook.enabled }}
   ingress:
     {{- with .Values.networkPolicy.dashboardFrom }}
     - ports:
@@ -25,6 +25,15 @@ spec:
         - port: mllp
           protocol: TCP
       {{- with .Values.networkPolicy.mllpFrom }}
+      from:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.webhook.enabled }}
+    - ports:
+        - port: webhook
+          protocol: TCP
+      {{- with .Values.networkPolicy.webhookFrom }}
       from:
         {{- toYaml . | nindent 8 }}
       {{- end }}

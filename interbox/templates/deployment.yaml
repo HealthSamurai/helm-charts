@@ -52,6 +52,21 @@ spec:
               containerPort: {{ .Values.mllp.port }}
               protocol: TCP
             {{- end }}
+            {{- if .Values.webhook.enabled }}
+            - name: webhook
+              containerPort: {{ include "interbox.webhookPort" . }}
+              protocol: TCP
+            {{- end }}
+          env:
+            - name: INTERBOX_RUNTIME_CONFIG_DIR
+              value: /run/interbox-runtime-config
+            - name: INTERBOX_WORKSPACE_INSTANCE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            {{- /* Set even with webhook.enabled off: a Service named <release>-webhook makes Kubernetes inject INTERBOX_WEBHOOK_PORT=tcp://<ip>:<port> into every pod of the namespace, and the engine refuses that value. env also beats envFrom. */}}
+            - name: INTERBOX_WEBHOOK_PORT
+              value: {{ include "interbox.webhookPort" . | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config
@@ -69,26 +84,38 @@ spec:
           {{- with $probe.startup }}
           startupProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- with $probe.liveness }}
           livenessProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- with $probe.readiness }}
           readinessProbe:
             httpGet:
-              path: {{ $probe.path }}
+              path: {{ .path | default $probe.path }}
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- toYaml . | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if gt (int .Values.preStopDelaySeconds) 0 }}
+          {{- /* Kubernetes takes an unset grace period as 30. `default` would also turn an explicit 0 into 30. */}}
+          {{- $grace := .Values.terminationGracePeriodSeconds }}
+          {{- if kindIs "invalid" $grace }}{{- $grace = 30 }}{{- end }}
+          {{- if ge (int .Values.preStopDelaySeconds) (int $grace) }}
+          {{- fail (printf "preStopDelaySeconds %d must be below terminationGracePeriodSeconds %d: the delay counts toward it, and the engine would be killed mid-shutdown" (int .Values.preStopDelaySeconds) (int $grace)) }}
+          {{- end }}
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: {{ int .Values.preStopDelaySeconds }}
           {{- end }}
           {{- with .Values.resources }}
           resources:
@@ -98,14 +125,39 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: interbox-runtime-config
+              mountPath: /run/interbox-runtime-config
+              readOnly: true
+            {{- if .Values.workspaceCache.enabled }}
+            - name: interbox-workspace-cache
+              mountPath: {{ .Values.workspaceCache.mountPath }}
+            {{- end }}
+            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            {{- end }}
       volumes:
+        - name: interbox-runtime-config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "interbox.fullname" . }}-config
+              {{- range .Values.extraEnvFromConfigMaps }}
+              - configMap:
+                  name: {{ . }}
+              {{- end }}
+        {{- if .Values.workspaceCache.enabled }}
+        - name: interbox-workspace-cache
+          {{- with .Values.workspaceCache.sizeLimit }}
+          emptyDir:
+            sizeLimit: {{ . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+        {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       restartPolicy: Always
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.nodeSelector }}
