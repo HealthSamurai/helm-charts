@@ -106,8 +106,11 @@ spec:
             {{- omit . "path" | toYaml | nindent 12 }}
           {{- end }}
           {{- if gt (int .Values.preStopDelaySeconds) 0 }}
-          {{- if ge (int .Values.preStopDelaySeconds) (int (.Values.terminationGracePeriodSeconds | default 30)) }}
-          {{- fail (printf "preStopDelaySeconds %d must be below terminationGracePeriodSeconds %d: the delay counts toward it, and the engine would be killed mid-shutdown" (int .Values.preStopDelaySeconds) (int (.Values.terminationGracePeriodSeconds | default 30))) }}
+          {{- /* Kubernetes takes an unset grace period as 30. `default` would also turn an explicit 0 into 30. */}}
+          {{- $grace := .Values.terminationGracePeriodSeconds }}
+          {{- if kindIs "invalid" $grace }}{{- $grace = 30 }}{{- end }}
+          {{- if ge (int .Values.preStopDelaySeconds) (int $grace) }}
+          {{- fail (printf "preStopDelaySeconds %d must be below terminationGracePeriodSeconds %d: the delay counts toward it, and the engine would be killed mid-shutdown" (int .Values.preStopDelaySeconds) (int $grace)) }}
           {{- end }}
           lifecycle:
             preStop:
