@@ -244,7 +244,7 @@ verticalPodAutoscaler:
   old shared-volume caches only after their pods stop.
 - All probes use `/api/health`, which answers while the API process runs. An unready
   pod loses Service traffic without a restart.
-- Leave readiness off `/api/ready` for now. On interbox 2.4.0 it reports unready
+- Leave readiness off `/api/ready`. From interbox 2.4.0 on, it reports unready
   without a valid license, with no pipelines, and while any pipeline is in backoff.
   Kubernetes has no per-port readiness, so one failing pipeline takes the pod out of
   the dashboard, MLLP and webhook Services at once: ingest stops for every pipeline,

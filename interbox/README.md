@@ -244,7 +244,7 @@ verticalPodAutoscaler:
   old shared-volume caches only after their pods stop.
 - All probes use `/api/health`, which answers while the API process runs. An unready
   pod loses Service traffic without a restart.
-- Leave readiness off `/api/ready` for now. On interbox 2.4.0 it reports unready
+- Leave readiness off `/api/ready`. From interbox 2.4.0 on, it reports unready
   without a valid license, with no pipelines, and while any pipeline is in backoff.
   Kubernetes has no per-port readiness, so one failing pipeline takes the pod out of
   the dashboard, MLLP and webhook Services at once: ingest stops for every pipeline,
@@ -348,7 +348,7 @@ route:
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
 | probe.path | string | `"/api/health"` | Default HTTP path for every probe. A probe's own `path` wins. |
-| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. `/api/ready` on interbox 2.4.0 turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README. |
+| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. `/api/ready` from interbox 2.4.0 on turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
 | replicaCount | int | `1` | Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas. |

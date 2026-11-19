@@ -34,7 +34,7 @@ probe:
     periodSeconds: 20
     timeoutSeconds: 5
     failureThreshold: 3
-  # -- Readiness probe. It inherits `probe.path`. `/api/ready` on interbox 2.4.0 turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README.
+  # -- Readiness probe. It inherits `probe.path`. `/api/ready` from interbox 2.4.0 on turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README.
   readiness:
     periodSeconds: 10
     timeoutSeconds: 3
