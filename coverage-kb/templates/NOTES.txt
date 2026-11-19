@@ -1,0 +1,13 @@
+coverage-kb {{ .Chart.AppVersion }} installed as release {{ .Release.Name }} in {{ .Release.Namespace }}.
+
+Rule packs: {{ index .Values.config "CRD_PACKS" }}
+
+Point prior-auth at it:
+  CDS_DECISION_SERVICE_URL=http://{{ include "coverage-kb.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/cds-services
+  CDS_DECISION_SERVICE_HEALTH_URL=http://{{ include "coverage-kb.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/health
+  CDS_ENABLED_HOOKS=order-sign-crd
+
+/health answers 503 until the Medicare Coverage Database is loaded into coverage_kb
+{{- if .Values.kbRestore.enabled }} (the kb-restore Job does it).
+{{- else }}. kbRestore is off: load it yourself.
+{{- end }}
