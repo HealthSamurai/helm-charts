@@ -274,9 +274,9 @@ build. Its checkout lives on a ReadWriteOnce PersistentVolumeClaim
 workspace service restarts. With `networkPolicy.enabled`, its pods accept port `3001` only from the
 main interbox pods.
 
-Engines older than 2.5.0 build themselves and ignore the workspace service; its pod then crash-loops
-on the unknown `workspace` command. That is harmless but noisy: run 2.5.0 or later with this
-chart.
+This chart needs engine 2.5.0 or later. An older image ignores the `workspace` argument, so the
+workspace service pod starts a second full engine and API that work alongside the main replicas.
+Upgrade the image together with the chart, or first.
 
 ## Pod lifecycle
 
