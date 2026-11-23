@@ -3,7 +3,7 @@ nameOverride: ""
 # -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. Defaults to 1; interbox 2.4.0 and later support multiple replicas.
+# -- Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes (interbox 2.4.0 and later support multiple replicas). Add replicas for availability, not throughput.
 replicaCount: 1
 
 image:
@@ -34,15 +34,18 @@ probe:
     periodSeconds: 20
     timeoutSeconds: 5
     failureThreshold: 3
-  # -- Readiness probe. It inherits `probe.path`. `/api/ready` from interbox 2.4.0 on turns unready without a license or while any pipeline is in backoff, and that takes the pod out of every Service at once; see the README.
+  # -- Readiness probe. It inherits `probe.path`. On interbox 2.5.0 or later set `path: /api/ready`, so only ready pods with bound listeners get traffic; older engines must keep `/api/health`. See the README.
   readiness:
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
 
-# -- Deployment strategy. Use `Recreate` for the first upgrade to interbox 2.4.0 or later: stop all old engine and API pods before starting the new ones. Later upgrades from 2.4.0 on support `RollingUpdate`.
+# -- Deployment strategy. The default starts a new pod and waits for it to be ready before it stops an old one. `type: Recreate` drops `rollingUpdate` and stops every old pod first.
 strategy:
-  type: Recreate
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
 # -- Grace period for in-flight messages to persist and ACK before SIGKILL.
 terminationGracePeriodSeconds: 30
 
@@ -76,6 +79,21 @@ priorityClassName: ""
 
 # -- Don't mount the ServiceAccount token; interbox never calls the Kubernetes API.
 automountServiceAccountToken: false
+
+workspaceService:
+  # -- Resources of the workspace service pod, which runs `bun install` and the workspace build. Your keys merge with these; set one to `null` to drop it.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 768Mi
+      ephemeral-storage: 1Gi
+  persistence:
+    # -- Keep the workspace service's workspace checkout on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive restarts. `false` uses an `emptyDir` that goes away with the pod.
+    enabled: true
+    # -- PVC size.
+    size: 5Gi
+    # -- PVC `storageClassName`. Empty = the cluster default.
+    storageClass: ""
 
 # -- Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`.
 securityContext:
@@ -146,7 +164,7 @@ secrets:
   CLAUDE_CODE_OAUTH_TOKEN: ""
   ANTHROPIC_API_KEY: ""
 
-# -- Extra ConfigMaps to load env from (envFrom). The chart also mounts them into `INTERBOX_RUNTIME_CONFIG_DIR`, and the engine saves their values in PostgreSQL, so they must hold no secrets.
+# -- Extra ConfigMaps to load env from (envFrom).
 extraEnvFromConfigMaps: []
 # -- Extra Secrets to load env from (envFrom).
 extraEnvFromSecrets: []

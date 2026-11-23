@@ -37,6 +37,8 @@ Webhook port (webhook sources and pull senders), TCP {{ $webhookPort }} on the {
 Aidbox: {{ . }}
 {{- end }}
 
+Workspace service: Deployment {{ include "interbox.fullname" . }}-workspace, reached by the main pods at http://{{ include "interbox.fullname" . }}-workspace:3001.
+
 {{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 
 License: not set. Activate it in the dashboard.

@@ -15,7 +15,8 @@ spec:
       {{- include "interbox.selectorLabels" . | nindent 6 }}
   {{- with .Values.strategy }}
   strategy:
-    {{- toYaml . | nindent 4 }}
+    {{- /* Values that set `type: Recreate` merge with the default `rollingUpdate`, which Kubernetes rejects for Recreate. */}}
+    {{- toYaml (eq (toString .type) "Recreate" | ternary (omit . "rollingUpdate") .) | nindent 4 }}
   {{- end }}
   template:
     metadata:
@@ -58,15 +59,11 @@ spec:
               protocol: TCP
             {{- end }}
           env:
-            - name: INTERBOX_RUNTIME_CONFIG_DIR
-              value: /run/interbox-runtime-config
-            - name: INTERBOX_WORKSPACE_INSTANCE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.uid
             {{- /* Set even with webhook.enabled off: a Service named <release>-webhook makes Kubernetes inject INTERBOX_WEBHOOK_PORT=tcp://<ip>:<port> into every pod of the namespace, and the engine refuses that value. env also beats envFrom. */}}
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
+            - name: INTERBOX_WORKSPACE_SERVICE_URL
+              value: http://{{ include "interbox.fullname" . }}-workspace:3001
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config
@@ -126,9 +123,6 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: interbox-runtime-config
-              mountPath: /run/interbox-runtime-config
-              readOnly: true
             {{- if .Values.workspaceCache.enabled }}
             - name: interbox-workspace-cache
               mountPath: {{ .Values.workspaceCache.mountPath }}
@@ -137,15 +131,6 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
       volumes:
-        - name: interbox-runtime-config
-          projected:
-            sources:
-              - configMap:
-                  name: {{ include "interbox.fullname" . }}-config
-              {{- range .Values.extraEnvFromConfigMaps }}
-              - configMap:
-                  name: {{ . }}
-              {{- end }}
         {{- if .Values.workspaceCache.enabled }}
         - name: interbox-workspace-cache
           {{- with .Values.workspaceCache.sizeLimit }}

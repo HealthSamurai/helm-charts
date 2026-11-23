@@ -230,26 +230,68 @@ verticalPodAutoscaler:
   maxAllowed: {cpu: "1", memory: 4Gi}
 ```
 
+## Replicas and rollouts
+
+Every ready replica gets traffic through the Services. With `replicaCount` above 1, a lease
+in Postgres picks one replica to process; the others stand by and take over when it stops.
+Replicas add availability, not throughput.
+
+The default `RollingUpdate` strategy (`maxSurge: 1`, `maxUnavailable: 0`) starts a new pod
+and waits for it to be ready before it stops an old one. `strategy: {type: Recreate}` still
+works: the chart drops `rollingUpdate` from it.
+
+On interbox 2.5.0 or later, set the readiness path for rolling deploys, so only
+ready pods with bound listeners get traffic:
+
+```yaml
+probe:
+  readiness:
+    path: /api/ready
+```
+
+Older engines must keep the default `/api/health`: their `/api/ready` also turns unready
+without a license or while a pipeline is in backoff, and Kubernetes then takes the pod out
+of the dashboard, MLLP and webhook Services at once.
+
+Upgrading from chart 0.3.x with `RollingUpdate`: engines 2.1.x and older briefly run two
+pods during a rollout, so a custom polling source (`defineSource` with `kind: pull`) can
+ingest a record twice. Engines 2.4.x and 2.5 or later are safe.
+
+## Workspace service
+
+The `interbox-workspace` Deployment is the one pod that owns the editable workspace
+checkout. It runs the dashboard assistant and the workspace actions, builds the workspace
+once per revision and publishes the build to Postgres. The main replicas load that build
+and no longer clone or build; the main pods reach the workspace service through
+`INTERBOX_WORKSPACE_SERVICE_URL` (Service `interbox-workspace`, port `3001`). It starts with the
+`workspace` argument, runs one replica with `Recreate`, and takes the same env and secrets
+as the main pods: the `INTERBOX_WORKSPACE_*` settings and credentials, `DATABASE_URL`, auth
+and, for the assistant, a Claude login (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
+
+While the workspace service is down, the replicas keep running and restart from the last published
+build. Its checkout lives on a ReadWriteOnce PersistentVolumeClaim
+(`workspaceService.persistence`; `false` falls back to an `emptyDir`), so uncommitted edits survive
+workspace service restarts. With `networkPolicy.enabled`, its pods accept port `3001` only from the
+main interbox pods.
+
+Engines older than 2.5.0 build themselves and ignore the workspace service; its pod then crash-loops
+on the unknown `workspace` command. That is harmless but noisy: run 2.5.0 or later with this
+chart.
+
 ## Pod lifecycle
 
-- Pod UID (`INTERBOX_WORKSPACE_INSTANCE`) separates workspace caches. Each pod keeps
-  its cache on an `emptyDir` (`workspaceCache`), so a restarted container reuses the
-  checkout and a replaced pod starts clean. `resources` requests 1Gi of
-  `ephemeral-storage` for the cache, the container filesystem and the logs
-  together; raise it for a workspace with heavy dependencies. There is no limit by
-  default. With `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod
-  that outgrows it, and its replacement starts with an empty cache. A limit below
-  the 1Gi request makes Kubernetes reject the pod, so lower
+- Each pod keeps its workspace cache on an `emptyDir` (`workspaceCache`), so a
+  restarted container reuses the checkout and a replaced pod starts clean.
+  `resources` requests 1Gi of `ephemeral-storage` for the cache, the container
+  filesystem and the logs together; raise it for a workspace with heavy dependencies.
+  There is no limit by default. With `resources.limits.ephemeral-storage` set,
+  Kubernetes evicts a pod that outgrows it, and its replacement starts with an empty
+  cache. A limit below the 1Gi request makes Kubernetes reject the pod, so lower
   `resources.requests.ephemeral-storage` with it. With a volume of your own, delete
   old shared-volume caches only after their pods stop.
-- All probes use `/api/health`, which answers while the API process runs. An unready
-  pod loses Service traffic without a restart.
-- Leave readiness off `/api/ready`. From interbox 2.4.0 on, it reports unready
-  without a valid license, with no pipelines, and while any pipeline is in backoff.
-  Kubernetes has no per-port readiness, so one failing pipeline takes the pod out of
-  the dashboard, MLLP and webhook Services at once: ingest stops for every pipeline,
-  and the dashboard goes away when it is needed to debug. Replicas run the same
-  workspace, so they fail together.
+- All probes use `/api/health` by default, which answers while the API process runs.
+  An unready pod loses Service traffic without a restart. See
+  [Replicas and rollouts](#replicas-and-rollouts) for `/api/ready`.
 - Each probe can override `path`; otherwise it inherits `probe.path`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
   This counts toward `terminationGracePeriodSeconds`, so the chart refuses a delay
@@ -257,36 +299,13 @@ verticalPodAutoscaler:
   so the image needs no `sleep` binary, but the cluster needs Kubernetes 1.30 or
   later. On an older cluster set it to `0`.
 
-## Runtime configuration
+## Configuration
 
-The chart keeps `envFrom` and projects the main and extra ConfigMaps into one
-read-only directory, passed to the engine through `INTERBOX_RUNTIME_CONFIG_DIR`.
-This identifies the settings replicas must agree on, separately from Secrets and
-pod metadata. interbox 2.4.0 and later capture them at startup and save them in
-PostgreSQL for recovery. **ConfigMaps must contain no secrets.** Every key must be a
-valid variable name, and `DATABASE_URL`, `INTERBOX_RUNTIME_CONFIG_DIR`,
-`INTERBOX_WORKSPACE_DIR`, `INTERBOX_WORKSPACE_INSTANCE` and `INTERBOX_INSTANCE_ID`
-stay out: the engine refuses to start otherwise. The chart checks `config` at render
-time; it cannot see the extra ConfigMaps. It also refuses `INTERBOX_WEBHOOK_PORT`
-(set `webhook.port`), and an `INTERBOX_WORKSPACE_CACHE` other than
-`workspaceCache.mountPath` while the cache volume is on.
-
-Later ConfigMaps win. A Secret that overrides a ConfigMap key with a different value
-rejects startup: `secrets` over `config`, or `extraEnvFromSecrets` over any ConfigMap.
-A `secrets` key that an extra ConfigMap also sets loses to it without an error,
-because `envFrom` loads the extra ConfigMaps after `secrets`. Credentials must
-authorize the configured destination and tenant.
-
-Users maintain no extra file. Restart to apply changes; external ConfigMap/Secret
-updates require a rollout.
-
-Returning to an earlier image or to ConfigMap values that were active before is a
-rollback. The engine refuses it and runs no pipelines, unless the same rollout
-sets a new value in `config.INTERBOX_RUNTIME_ROLLBACK_INTENT`. `helm rollback`
-replays the earlier revision's values as they were and cannot add one, so roll back
-with `helm upgrade` instead: the earlier values plus a new intent, for example
-`--set config.INTERBOX_RUNTIME_ROLLBACK_INTENT=rollback-1`. With `Recreate`, a
-refused rollout means downtime.
+The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
+`secrets`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and an `INTERBOX_WORKSPACE_CACHE`
+other than `workspaceCache.mountPath` while the cache volume is on. It cannot see keys in
+extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods;
+external ConfigMap and Secret updates need a rollout.
 
 ## Gateway API
 

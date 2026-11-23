@@ -12,8 +12,17 @@
 {{- end -}}
 
 {{- define "interbox.labels" -}}
-helm.sh/chart: {{ include "interbox.chart" . }}
 {{ include "interbox.selectorLabels" . }}
+{{ include "interbox.commonLabels" . }}
+{{- end -}}
+
+{{- define "interbox.workspaceServiceLabels" -}}
+{{ include "interbox.workspaceServiceSelectorLabels" . }}
+{{ include "interbox.commonLabels" . }}
+{{- end -}}
+
+{{- define "interbox.commonLabels" -}}
+helm.sh/chart: {{ include "interbox.chart" . }}
 app.kubernetes.io/name: {{ include "interbox.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Chart.AppVersion }}
@@ -24,6 +33,12 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{- define "interbox.selectorLabels" -}}
 app: {{ include "interbox.fullname" . }}
+{{- end -}}
+
+{{/* A name of its own: the main Service selects `app: <fullname>` and must never match a workspace service pod. */}}
+{{- define "interbox.workspaceServiceSelectorLabels" -}}
+app: {{ include "interbox.fullname" . }}-workspace
+app.kubernetes.io/component: workspace
 {{- end -}}
 
 {{- define "interbox.secretName" -}}
@@ -65,15 +80,11 @@ app: {{ include "interbox.fullname" . }}
 {{- $port -}}
 {{- end -}}
 
-{{/* Fails the render on a `config` key the engine refuses in its runtime configuration directory: it would not start. */}}
+{{/* Fails the render on a `config` key that does not belong in the ConfigMap. */}}
 {{- define "interbox.checkConfig" -}}
-{{- $reserved := list "DATABASE_URL" "INTERBOX_RUNTIME_CONFIG_DIR" "INTERBOX_WORKSPACE_DIR" "INTERBOX_WORKSPACE_INSTANCE" "INTERBOX_INSTANCE_ID" -}}
 {{- range $key, $value := .Values.config -}}
-{{- if or (not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" $key)) (eq $key "__proto__") -}}
-{{- fail (printf "config.%s: not a valid configuration key; the engine refuses it in a ConfigMap and would not start" $key) -}}
-{{- end -}}
-{{- if has $key $reserved -}}
-{{- fail (printf "config.%s: the engine refuses this key in a ConfigMap and would not start; put it in secrets" $key) -}}
+{{- if eq $key "DATABASE_URL" -}}
+{{- fail "config.DATABASE_URL: a credential does not belong in a ConfigMap; put it in secrets" -}}
 {{- end -}}
 {{- if eq $key "INTERBOX_WEBHOOK_PORT" -}}
 {{- fail "config.INTERBOX_WEBHOOK_PORT: set webhook.port instead; the chart sets this variable on the container from it, and a different value in a ConfigMap stops the engine at startup" -}}

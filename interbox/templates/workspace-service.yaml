@@ -1,0 +1,160 @@
+{{- if .Values.workspaceService.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "interbox.fullname" . }}-workspace
+  labels:
+    {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.workspaceService.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.workspaceService.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interbox.fullname" . }}-workspace
+  labels:
+    {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+  {{- with .Values.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ (include (print $.Template.BasePath "/configmap.yaml") . | fromYaml).data | toJson | sha256sum }}
+        {{- if not .Values.secrets.existingSecretName }}
+        checksum/secret: {{ (include (print $.Template.BasePath "/secret.yaml") . | fromYaml).stringData | toJson | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if include "interbox.serviceAccountName" . }}
+      serviceAccountName: {{ include "interbox.serviceAccountName" . }}
+      {{- end }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      containers:
+        - name: workspace
+          image: {{ include "interbox.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - workspace
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          env:
+            {{- /* The same variable the main pod sets: a Service named <release>-webhook makes Kubernetes inject a value the engine refuses. */}}
+            - name: INTERBOX_WEBHOOK_PORT
+              value: {{ include "interbox.webhookPort" . | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "interbox.fullname" . }}-config
+            - secretRef:
+                name: {{ include "interbox.secretName" . }}
+            {{- range .Values.extraEnvFromConfigMaps }}
+            - configMapRef:
+                name: {{ . }}
+            {{- end }}
+            {{- range .Values.extraEnvFromSecrets }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- $probe := .Values.probe }}
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- omit $probe.startup "path" | toYaml | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- omit $probe.liveness "path" | toYaml | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: http
+              scheme: {{ $probe.scheme | default "HTTP" }}
+            {{- omit $probe.readiness "path" | toYaml | nindent 12 }}
+          {{- with .Values.workspaceService.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: interbox-workspace-cache
+              mountPath: {{ .Values.workspaceCache.mountPath }}
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: interbox-workspace-cache
+          {{- if .Values.workspaceService.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "interbox.fullname" . }}-workspace
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interbox.fullname" . }}-workspace
+  labels:
+    {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3001
+      targetPort: http
