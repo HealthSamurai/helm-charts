@@ -285,8 +285,7 @@ and the chart in the same upgrade:
 - An older image under chart 0.4.0 ignores the `workspace` argument, so the workspace pod runs
   a second full engine and API alongside the main pods. With engine 2.1.x or older, a custom
   polling source (`defineSource` with `kind: pull`) can then ingest a record twice. A 2.4.x
-  engine runs safely as a second replica, but the workspace pod's readiness follows that
-  engine's `/api/ready`, which turns unready while a pipeline is in backoff.
+  engine runs as a second replica.
 
 A deployment whose chart version floats, with a `>=` range or none, takes 0.4.0 as soon as it
 is released, whatever its image. With an older image, its workspace pod runs that second engine
@@ -303,8 +302,9 @@ until the image moves to 2.5.0.
   An unready pod loses Service traffic without a restart. See
   [Replicas and rollouts](#replicas-and-rollouts) for `/api/ready`.
 - Each probe can set its own `path`, and otherwise inherits `probe.path`. The
-  workspace service ignores both: its startup and liveness probes use `/api/health`
-  and its readiness probe `/api/ready`. It takes their other settings from `probe`.
+  workspace service ignores both and uses `/api/health` for every probe, so an older
+  image's `/api/ready` cannot hold back its rollout. It takes their other settings from
+  `probe`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
   This counts toward `terminationGracePeriodSeconds`, so the chart refuses a delay
   that is not below it. The wait uses the kubelet's built-in `preStop.sleep` action,
@@ -380,11 +380,11 @@ route:
 | preStopDelaySeconds | int | `5` | Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds` and must stay below it; `0` turns it off. |
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the interbox pods for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
-| probe.path | string | `"/api/health"` | Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service keeps its own paths and takes the other probe settings. |
+| probe.path | string | `"/api/health"` | Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service uses `/api/health` for every probe and takes the other probe settings. |
 | probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. On interbox 2.5.0 or later set `path: /api/ready`, so only ready pods with bound listeners get traffic; older engines must keep `/api/health`. See the README. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe, for the main pods and the workspace service. Generous: the workspace service clones, installs and builds the workspace on its first start. |
-| replicaCount | int | `1` | Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes. Add replicas for availability, not throughput. |
+| replicaCount | int | `1` | Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes. Add replicas for availability, not throughput. `0` also stops the workspace service. |
 | resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Resources of each main pod. The main pods load published builds; `workspaceService.resources` covers the workspace build. `ephemeral-storage` covers the unpacked builds, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it. |
 | route.main.additionalRules | list | `[]` | Rules rendered ahead of the rule to the Service. Templated. |
 | route.main.annotations | object | `{}` | Route annotations. Templated. |

@@ -23,23 +23,12 @@ spec:
       labels:
         {{- include "interbox.selectorLabels" . | nindent 8 }}
       annotations:
-        {{- /* Payload only: labels carry the chart version, so hashing them restarts pods on every chart bump. */}}
-        checksum/config: {{ (include (print $.Template.BasePath "/configmap.yaml") . | fromYaml).data | toJson | sha256sum }}
-        {{- if not .Values.secrets.existingSecretName }}
-        checksum/secret: {{ (include (print $.Template.BasePath "/secret.yaml") . | fromYaml).stringData | toJson | sha256sum }}
-        {{- end }}
+        {{- include "interbox.podChecksums" . | nindent 8 }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if include "interbox.serviceAccountName" . }}
-      serviceAccountName: {{ include "interbox.serviceAccountName" . }}
-      {{- end }}
-      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- include "interbox.podIdentity" . | nindent 6 }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ include "interbox.image" . }}
@@ -59,30 +48,8 @@ spec:
               protocol: TCP
             {{- end }}
           {{- include "interbox.containerEnv" . | nindent 10 }}
-          {{- $probe := .Values.probe }}
-          {{- with $probe.startup }}
-          startupProbe:
-            httpGet:
-              path: {{ .path | default $probe.path }}
-              port: http
-              scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit . "path" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- with $probe.liveness }}
-          livenessProbe:
-            httpGet:
-              path: {{ .path | default $probe.path }}
-              port: http
-              scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit . "path" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- with $probe.readiness }}
-          readinessProbe:
-            httpGet:
-              path: {{ .path | default $probe.path }}
-              port: http
-              scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- with include "interbox.probes" (dict "root" .) | trim }}
+          {{- . | nindent 10 }}
           {{- end }}
           {{- if gt (int .Values.preStopDelaySeconds) 0 }}
           {{- /* Kubernetes takes an unset grace period as 30. `default` would also turn an explicit 0 into 30. */}}

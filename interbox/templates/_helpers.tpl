@@ -7,15 +7,21 @@
 {{- default .Chart.Name .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "interbox.apiPort" -}}
-{{- $raw := toString .Values.apiPort -}}
+{{/* A port value as a whole number, from a list of the value's name and the value. */}}
+{{- define "interbox.port" -}}
+{{- $raw := toString (index . 1) -}}
 {{- $port := 0 -}}
 {{- if regexMatch "^[0-9]{1,5}$" $raw -}}
 {{- $port = atoi $raw -}}
 {{- end -}}
 {{- if or (lt $port 1) (gt $port 65535) -}}
-{{- fail (printf "apiPort must be a whole number from 1 to 65535, got %q" $raw) -}}
+{{- fail (printf "%s must be a whole number from 1 to 65535, got %q" (index . 0) $raw) -}}
 {{- end -}}
+{{- $port -}}
+{{- end -}}
+
+{{- define "interbox.apiPort" -}}
+{{- $port := int (include "interbox.port" (list "apiPort" .Values.apiPort)) -}}
 {{- if and .Values.mllp.enabled (eq $port (int .Values.mllp.port)) -}}
 {{- fail (printf "apiPort %d is already taken by the MLLP port (mllp.port)" $port) -}}
 {{- end -}}
@@ -50,6 +56,41 @@ envFrom:
   - secretRef:
       name: {{ . }}
   {{- end }}
+{{- end -}}
+
+{{- define "interbox.podChecksums" -}}
+{{- /* Payload only: labels carry the chart version, so hashing them restarts pods on every chart bump. */}}
+checksum/config: {{ (include (print .Template.BasePath "/configmap.yaml") . | fromYaml).data | toJson | sha256sum }}
+{{- if not .Values.secrets.existingSecretName }}
+checksum/secret: {{ (include (print .Template.BasePath "/secret.yaml") . | fromYaml).stringData | toJson | sha256sum }}
+{{- end }}
+{{- end -}}
+
+{{- define "interbox.podIdentity" -}}
+{{- with .Values.imagePullSecrets }}
+imagePullSecrets:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- if include "interbox.serviceAccountName" . }}
+serviceAccountName: {{ include "interbox.serviceAccountName" . }}
+{{- end }}
+automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+{{- end -}}
+
+{{/* The probes `probe` sets, from a dict of `root` and an optional `path` that every probe then uses. */}}
+{{- define "interbox.probes" -}}
+{{- $probe := .root.Values.probe -}}
+{{- $fixed := .path -}}
+{{- range $kind := list "startup" "liveness" "readiness" }}
+{{- with index $probe $kind }}
+{{ $kind }}Probe:
+  httpGet:
+    path: {{ $fixed | default .path | default $probe.path }}
+    port: http
+    scheme: {{ $probe.scheme | default "HTTP" }}
+  {{- omit . "path" | toYaml | nindent 2 }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{- define "interbox.scheduling" -}}
@@ -126,14 +167,7 @@ app.kubernetes.io/component: workspace
 
 {{/* The webhook port as a whole number; fails the render on a value the engine or the pod's other ports reject. */}}
 {{- define "interbox.webhookPort" -}}
-{{- $raw := toString .Values.webhook.port -}}
-{{- $port := 0 -}}
-{{- if regexMatch "^[0-9]{1,5}$" $raw -}}
-{{- $port = atoi $raw -}}
-{{- end -}}
-{{- if or (lt $port 1) (gt $port 65535) -}}
-{{- fail (printf "webhook.port must be a whole number from 1 to 65535, got %q" $raw) -}}
-{{- end -}}
+{{- $port := int (include "interbox.port" (list "webhook.port" .Values.webhook.port)) -}}
 {{- if eq $port (int (include "interbox.apiPort" .)) -}}
 {{- fail (printf "webhook.port %d is already taken by the API port (apiPort)" $port) -}}
 {{- end -}}

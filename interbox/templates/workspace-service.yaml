@@ -27,7 +27,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: 1
+  replicas: {{ eq (int .Values.replicaCount) 0 | ternary 0 1 }}
   selector:
     matchLabels:
       {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 6 }}
@@ -38,22 +38,12 @@ spec:
       labels:
         {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 8 }}
       annotations:
-        checksum/config: {{ (include (print $.Template.BasePath "/configmap.yaml") . | fromYaml).data | toJson | sha256sum }}
-        {{- if not .Values.secrets.existingSecretName }}
-        checksum/secret: {{ (include (print $.Template.BasePath "/secret.yaml") . | fromYaml).stringData | toJson | sha256sum }}
-        {{- end }}
+        {{- include "interbox.podChecksums" . | nindent 8 }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if include "interbox.serviceAccountName" . }}
-      serviceAccountName: {{ include "interbox.serviceAccountName" . }}
-      {{- end }}
-      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- include "interbox.podIdentity" . | nindent 6 }}
       {{- /* Cloud block volumes start root-owned; the group lets the non-root user write the checkout. */}}
       securityContext:
         fsGroup: {{ (.Values.securityContext | default dict).runAsGroup | default 1000 }}
@@ -69,30 +59,9 @@ spec:
               containerPort: {{ include "interbox.apiPort" . }}
               protocol: TCP
           {{- include "interbox.containerEnv" . | nindent 10 }}
-          {{- $probe := .Values.probe }}
-          {{- with $probe.startup }}
-          startupProbe:
-            httpGet:
-              path: /api/health
-              port: http
-              scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit . "path" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- with $probe.liveness }}
-          livenessProbe:
-            httpGet:
-              path: /api/health
-              port: http
-              scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit . "path" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- with $probe.readiness }}
-          readinessProbe:
-            httpGet:
-              path: /api/ready
-              port: http
-              scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- /* /api/health, not /api/ready: an older image's /api/ready turns unready while a pipeline is in backoff. */}}
+          {{- with include "interbox.probes" (dict "root" . "path" "/api/health") | trim }}
+          {{- . | nindent 10 }}
           {{- end }}
           {{- with .Values.workspaceService.resources }}
           resources:

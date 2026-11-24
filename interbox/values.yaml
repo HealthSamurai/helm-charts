@@ -3,7 +3,7 @@ nameOverride: ""
 # -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes. Add replicas for availability, not throughput.
+# -- Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes. Add replicas for availability, not throughput. `0` also stops the workspace service.
 replicaCount: 1
 
 image:
@@ -20,7 +20,7 @@ image:
 imagePullSecrets: []
 
 probe:
-  # -- Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service keeps its own paths and takes the other probe settings.
+  # -- Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service uses `/api/health` for every probe and takes the other probe settings.
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
