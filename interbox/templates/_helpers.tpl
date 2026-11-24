@@ -43,6 +43,9 @@ env:
     value: {{ include "interbox.apiPort" . | quote }}
   - name: INTERBOX_WORKSPACE_SERVICE_URL
     value: {{ include "interbox.workspaceServiceUrl" . }}
+  {{- /* The assistant's CLI calls the API in its own pod, and defaults to port 3001. */}}
+  - name: INTERBOX_API_URL
+    value: http://localhost:{{ include "interbox.apiPort" . }}
 envFrom:
   - configMapRef:
       name: {{ include "interbox.fullname" . }}-config

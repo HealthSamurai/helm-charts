@@ -5,6 +5,9 @@ metadata:
   name: {{ include "interbox.fullname" . }}-workspace
   labels:
     {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+  annotations:
+    {{- /* The checkout can hold edits nobody pushed, so helm uninstall leaves it. */}}
+    helm.sh/resource-policy: keep
 spec:
   accessModes:
     - ReadWriteOnce
