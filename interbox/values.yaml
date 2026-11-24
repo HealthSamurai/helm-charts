@@ -3,7 +3,7 @@ nameOverride: ""
 # -- Override the full resource name (default: the chart name).
 fullnameOverride: ""
 
-# -- Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes (interbox 2.4.0 and later support multiple replicas). Add replicas for availability, not throughput.
+# -- Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes. Add replicas for availability, not throughput.
 replicaCount: 1
 
 image:

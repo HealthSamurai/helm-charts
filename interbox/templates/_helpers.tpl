@@ -7,7 +7,6 @@
 {{- default .Chart.Name .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{/* The API port as a whole number; fails the render on a value outside 1..65535 or one the MLLP port takes. */}}
 {{- define "interbox.apiPort" -}}
 {{- $raw := toString .Values.apiPort -}}
 {{- $port := 0 -}}
@@ -100,7 +99,6 @@ app.kubernetes.io/component: workspace
 {{- $port -}}
 {{- end -}}
 
-{{/* Fails the render on a `config` key that does not belong in the ConfigMap. */}}
 {{- define "interbox.checkConfig" -}}
 {{- range $key, $value := .Values.config -}}
 {{- if eq $key "DATABASE_URL" -}}
