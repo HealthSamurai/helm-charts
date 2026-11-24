@@ -72,8 +72,6 @@ spec:
             {{- /* The same variable the main pod sets: a Service named <release>-webhook makes Kubernetes inject a value the engine refuses. */}}
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
-            - name: INTERBOX_WORKSPACE_CACHE
-              value: /var/lib/interbox-workspace
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config
@@ -121,8 +119,9 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- /* The engine's default INTERBOX_WORKSPACE_CACHE. */}}
             - name: interbox-workspace-checkout
-              mountPath: /var/lib/interbox-workspace
+              mountPath: /tmp/interbox-engine
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

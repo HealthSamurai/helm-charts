@@ -122,27 +122,14 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- with .Values.volumeMounts }}
           volumeMounts:
-            {{- if .Values.workspaceCache.enabled }}
-            - name: interbox-workspace-cache
-              mountPath: {{ .Values.workspaceCache.mountPath }}
-            {{- end }}
-            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-            {{- end }}
-      volumes:
-        {{- if .Values.workspaceCache.enabled }}
-        - name: interbox-workspace-cache
-          {{- with .Values.workspaceCache.sizeLimit }}
-          emptyDir:
-            sizeLimit: {{ . }}
-          {{- else }}
-          emptyDir: {}
           {{- end }}
-        {{- end }}
-        {{- with .Values.volumes }}
+      {{- with .Values.volumes }}
+      volumes:
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
       restartPolicy: Always
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.nodeSelector }}

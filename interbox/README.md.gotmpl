@@ -293,14 +293,11 @@ is released, whatever its image. Pin it below 0.4.0 until its image moves too.
 
 ## Pod lifecycle
 
-- Each main pod keeps the builds it unpacks on an `emptyDir` (`workspaceCache`), so a
-  restarted container reuses them and a replaced pod unpacks the current build again.
-  `resources` requests 1Gi of `ephemeral-storage` for the cache, the container
-  filesystem and the logs together. There is no limit by default. With
-  `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod that outgrows it,
-  and its replacement starts with an empty cache. A limit below the 1Gi request makes Kubernetes reject the pod, so lower
-  `resources.requests.ephemeral-storage` with it. With a volume of your own, delete
-  old shared-volume caches only after their pods stop.
+- `resources` requests 1Gi of `ephemeral-storage` for the builds a main pod unpacks,
+  the container filesystem and the logs together. There is no limit by default. With
+  `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod that outgrows it.
+  A limit below the 1Gi request makes Kubernetes reject the pod, so lower
+  `resources.requests.ephemeral-storage` with it.
 - All probes use `/api/health` by default, which answers while the API process runs.
   An unready pod loses Service traffic without a restart. See
   [Replicas and rollouts](#replicas-and-rollouts) for `/api/ready`.
@@ -316,9 +313,9 @@ is released, whatever its image. Pin it below 0.4.0 until its image moves too.
 ## Configuration
 
 The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
-`secrets`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and an `INTERBOX_WORKSPACE_CACHE`
-other than `workspaceCache.mountPath` while the cache volume is on. It cannot see keys in
-extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods;
+`secrets`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and `INTERBOX_WORKSPACE_CACHE`
+(the workspace service keeps its checkout on its volume at the engine's default path). It
+cannot see keys in extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods;
 external ConfigMap and Secret updates need a rollout.
 
 ## Gateway API

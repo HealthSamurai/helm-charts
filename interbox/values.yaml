@@ -116,14 +116,6 @@ volumes: []
 # -- Extra container volume mounts.
 volumeMounts: []
 
-workspaceCache:
-  # -- Mount a pod-local `emptyDir` at the main pods' workspace cache path. The builds a pod unpacks then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own.
-  enabled: true
-  # -- Where to mount it. A different `config.INTERBOX_WORKSPACE_CACHE` fails the render; the engine's default is `/tmp/interbox-engine`.
-  mountPath: /tmp/interbox-engine
-  # -- `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it.
-  sizeLimit: ""
-
 serviceAccount:
   # -- Create a ServiceAccount for the pod.
   create: false

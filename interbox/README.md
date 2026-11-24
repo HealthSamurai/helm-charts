@@ -293,14 +293,11 @@ is released, whatever its image. Pin it below 0.4.0 until its image moves too.
 
 ## Pod lifecycle
 
-- Each main pod keeps the builds it unpacks on an `emptyDir` (`workspaceCache`), so a
-  restarted container reuses them and a replaced pod unpacks the current build again.
-  `resources` requests 1Gi of `ephemeral-storage` for the cache, the container
-  filesystem and the logs together. There is no limit by default. With
-  `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod that outgrows it,
-  and its replacement starts with an empty cache. A limit below the 1Gi request makes Kubernetes reject the pod, so lower
-  `resources.requests.ephemeral-storage` with it. With a volume of your own, delete
-  old shared-volume caches only after their pods stop.
+- `resources` requests 1Gi of `ephemeral-storage` for the builds a main pod unpacks,
+  the container filesystem and the logs together. There is no limit by default. With
+  `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod that outgrows it.
+  A limit below the 1Gi request makes Kubernetes reject the pod, so lower
+  `resources.requests.ephemeral-storage` with it.
 - All probes use `/api/health` by default, which answers while the API process runs.
   An unready pod loses Service traffic without a restart. See
   [Replicas and rollouts](#replicas-and-rollouts) for `/api/ready`.
@@ -316,9 +313,9 @@ is released, whatever its image. Pin it below 0.4.0 until its image moves too.
 ## Configuration
 
 The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
-`secrets`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and an `INTERBOX_WORKSPACE_CACHE`
-other than `workspaceCache.mountPath` while the cache volume is on. It cannot see keys in
-extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods;
+`secrets`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and `INTERBOX_WORKSPACE_CACHE`
+(the workspace service keeps its checkout on its volume at the engine's default path). It
+cannot see keys in extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods;
 external ConfigMap and Secret updates need a rollout.
 
 ## Gateway API
@@ -419,9 +416,6 @@ route:
 | volumes | list | `[]` | Extra pod volumes. |
 | webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port. |
 | webhook.port | int | `3002` | Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: `config.INTERBOX_WEBHOOK_PORT` fails the render, a different value in an extra ConfigMap rejects startup, and one in a Secret is ignored. |
-| workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the main pods' workspace cache path. The builds a pod unpacks then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
-| workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. A different `config.INTERBOX_WORKSPACE_CACHE` fails the render; the engine's default is `/tmp/interbox-engine`. |
-| workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it. |
 | workspaceService.persistence.enabled | bool | `true` | Keep the workspace service's workspace checkout on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive restarts. `false` uses an `emptyDir` that goes away with the pod. |
 | workspaceService.persistence.size | string | `"5Gi"` | PVC size. |
 | workspaceService.persistence.storageClass | string | `""` | PVC `storageClassName`. Empty = the cluster default. |

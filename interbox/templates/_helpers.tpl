@@ -89,8 +89,8 @@ app.kubernetes.io/component: workspace
 {{- if eq $key "INTERBOX_WEBHOOK_PORT" -}}
 {{- fail "config.INTERBOX_WEBHOOK_PORT: set webhook.port instead; the chart sets this variable on the container from it, and a different value in a ConfigMap stops the engine at startup" -}}
 {{- end -}}
-{{- if and (eq $key "INTERBOX_WORKSPACE_CACHE") $.Values.workspaceCache.enabled (ne (clean (toString $value)) (clean $.Values.workspaceCache.mountPath)) -}}
-{{- fail (printf "config.INTERBOX_WORKSPACE_CACHE %s differs from workspaceCache.mountPath %s; the cache would land in the container filesystem instead of the emptyDir volume. Set both to the same path" (toString $value) $.Values.workspaceCache.mountPath) -}}
+{{- if eq $key "INTERBOX_WORKSPACE_CACHE" -}}
+{{- fail "config.INTERBOX_WORKSPACE_CACHE: remove it; the workspace service keeps its checkout on its volume at the engine's default path, and another path would leave the checkout off the volume" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
