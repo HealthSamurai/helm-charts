@@ -28,7 +28,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- include "interbox.podIdentity" . | nindent 6 }}
+      {{- include "interbox.podBase" . | nindent 6 }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ include "interbox.image" . }}

@@ -94,6 +94,10 @@ workspaceService:
     size: 5Gi
     # -- PVC `storageClassName`. Empty = the cluster default.
     storageClass: ""
+  # -- Pod securityContext of the workspace service, set only with `persistence.enabled`: a cloud volume starts root-owned, and `fsGroup` lets the non-root user write it. On OpenShift set the group the project allows, or `null` to drop it.
+  podSecurityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
 
 # -- Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`.
 securityContext:

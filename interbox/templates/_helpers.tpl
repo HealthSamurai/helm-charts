@@ -35,10 +35,8 @@ http://{{ include "interbox.fullname" . }}-workspace:{{ include "interbox.apiPor
 {{/* Both pods get the same environment: a 2.4.x engine identifies its configuration by its whole environment, so an older image in the workspace pod must see what the main pods see. */}}
 {{- define "interbox.containerEnv" -}}
 env:
-  {{- /* Set even with webhook.enabled off: a Service named <release>-webhook makes Kubernetes inject INTERBOX_WEBHOOK_PORT=tcp://<ip>:<port> into every pod of the namespace, and the engine refuses that value. env also beats envFrom. */}}
   - name: INTERBOX_WEBHOOK_PORT
     value: {{ include "interbox.webhookPort" . | quote }}
-  {{- /* Set, not left to the image: a Service named api would make Kubernetes inject API_PORT=tcp://<ip>:<port>. */}}
   - name: API_PORT
     value: {{ include "interbox.apiPort" . | quote }}
   - name: INTERBOX_WORKSPACE_SERVICE_URL
@@ -69,7 +67,9 @@ checksum/secret: {{ (include (print .Template.BasePath "/secret.yaml") . | fromY
 {{- end }}
 {{- end -}}
 
-{{- define "interbox.podIdentity" -}}
+{{- define "interbox.podBase" -}}
+{{- /* Without this a pod gets a variable per Service in the namespace at its start, so pods started apart differ, and a 2.4.x engine identifies its configuration by its whole environment. */}}
+enableServiceLinks: false
 {{- with .Values.imagePullSecrets }}
 imagePullSecrets:
   {{- toYaml . | nindent 2 }}
