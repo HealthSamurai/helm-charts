@@ -1,11 +1,10 @@
 # interbox
 
-
 Integration Engine for Modern Healthcare Solutions. This chart deploys the all-in-one
 interbox, which ingests HL7v2 over MLLP and runs the pipelines from your workspace, for
 example to deliver FHIR to Aidbox. The API and dashboard run in the same pod as the engine.
 
-![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square) 
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: edge](https://img.shields.io/badge/AppVersion-edge-informational?style=flat-square)
 
 ## Installation
 
@@ -275,9 +274,12 @@ build. Its checkout lives on a ReadWriteOnce PersistentVolumeClaim
 workspace service restarts. With `networkPolicy.enabled`, its pods accept port `3001` only from the
 main interbox pods.
 
-This chart needs engine 2.5.0 or later. An older image ignores the `workspace` argument, so the
-workspace service pod starts a second full engine and API that work alongside the main replicas.
-Upgrade the image together with the chart, or first.
+This chart needs engine 2.5.0 or later, and engine 2.5.0 needs this chart. An older image ignores
+the `workspace` argument, so the workspace service pod starts a second full engine and API that
+work alongside the main replicas. Engine 2.5.0 under chart 0.3.x has no workspace service, so its
+replicas find no published build and stay unready. Move the image and the chart in the same
+upgrade. A deployment whose chart version floats (a `>=` range, or none) takes 0.4.0 as soon as it
+is released, whatever its image: pin it below 0.4.0 until its image moves too.
 
 ## Pod lifecycle
 
