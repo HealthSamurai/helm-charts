@@ -165,10 +165,13 @@ database:
   # -- The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself.
   createDatabase: true
 
+# -- Port the API and dashboard listen on, in the main pods and the workspace service. The chart sets `API_PORT` from it.
+apiPort: 3001
+
 service:
   # -- Dashboard/API Service type.
   type: ClusterIP
-  # -- Port of the dashboard/API Service. The pods listen on 3001 whatever it is.
+  # -- Port of the dashboard/API Service. It forwards to `apiPort`.
   port: 3001
   # -- Dashboard/API Service annotations.
   annotations: {}

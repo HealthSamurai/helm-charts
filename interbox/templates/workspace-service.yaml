@@ -72,6 +72,8 @@ spec:
             {{- /* The same variable the main pod sets: a Service named <release>-webhook makes Kubernetes inject a value the engine refuses. */}}
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
+            - name: API_PORT
+              value: {{ include "interbox.apiPort" . | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config

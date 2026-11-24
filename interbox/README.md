@@ -39,8 +39,8 @@ to sign in, and [PREREQUISITES.md](./PREREQUISITES.md) covers both.
 `secrets.data.<KEY>` still works but is deprecated, and when a key is set both ways the flat
 value wins.
 
-The dashboard and API listen on `3001`, and MLLP (HL7v2) gets TCP `2575` on a LoadBalancer
-of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
+The dashboard and API listen on `apiPort` (`3001`), and MLLP (HL7v2) gets TCP `2575` on a
+LoadBalancer of its own. Keep `mllp.port` equal to the port your workspace's MLLP source listens on.
 Webhooks are off by default. Set `webhook.enabled: true` when the workspace declares a
 `webhookSource` or a `pullSender`: the engine serves both on one port, `3002`, and tells them
 apart by their `path`. The chart then gives that port a Service of its own, `interbox-webhook`,
@@ -179,8 +179,8 @@ deploymentAnnotations:
 
 ## NetworkPolicy
 
-Port `3001` serves the dashboard and its API, so close it to everything that has no reason
-to call it. `networkPolicy.enabled: true` adds an ingress-only NetworkPolicy:
+`apiPort` (`3001`) serves the dashboard and its API, so close it to everything that has no
+reason to call it. `networkPolicy.enabled: true` adds an ingress-only NetworkPolicy:
 
 ```yaml
 networkPolicy:
@@ -259,7 +259,7 @@ The `interbox-workspace` Deployment runs one pod, the workspace service. It owns
 workspace checkout, runs the dashboard assistant and the workspace actions, builds the
 workspace once per revision and publishes the build to Postgres. The main pods load that
 build and never clone or build. They reach the workspace service through
-`INTERBOX_WORKSPACE_SERVICE_URL`, set to the Service `interbox-workspace` on port `3001`.
+`INTERBOX_WORKSPACE_SERVICE_URL`, set to the Service `interbox-workspace` on `apiPort` (`3001`).
 
 The pod runs the same image with the `workspace` argument, one replica and the `Recreate`
 strategy. It takes the same env and secrets as the main pods: the `INTERBOX_WORKSPACE_*`
@@ -271,7 +271,7 @@ restart. `workspaceService.persistence.enabled: false` uses an `emptyDir` instea
 edits go away with the pod. While the workspace service is down, the main pods keep running
 and restart from the last published build.
 
-With `networkPolicy.enabled`, the workspace pod accepts port `3001` only from the main pods.
+With `networkPolicy.enabled`, the workspace pod accepts `apiPort` only from the main pods.
 It carries the label `app: interbox-workspace`, not `app: interbox`, so a NetworkPolicy of
 your own that selects the main pods does not cover it.
 
@@ -313,10 +313,11 @@ is released, whatever its image. Pin it below 0.4.0 until its image moves too.
 ## Configuration
 
 The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
-`secrets`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and `INTERBOX_WORKSPACE_CACHE`
-(the workspace service keeps its checkout on its volume at the engine's default path). It
-cannot see keys in extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods;
-external ConfigMap and Secret updates need a rollout.
+`secrets`), `API_PORT` (set `apiPort`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and
+`INTERBOX_WORKSPACE_CACHE` (the workspace service keeps its checkout on its volume at the
+engine's default path). It cannot see keys in extra ConfigMaps. Changes to the chart's own
+ConfigMap and Secret restart the pods; external ConfigMap and Secret updates need a
+rollout.
 
 ## Gateway API
 
@@ -341,6 +342,7 @@ route:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for scheduling. |
+| apiPort | int | `3001` | Port the API and dashboard listen on, in the main pods and the workspace service. The chart sets `API_PORT` from it. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
 | config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` and `INTERBOX_WEBHOOK_PORT` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
@@ -397,7 +399,7 @@ route:
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |
 | service.annotations | object | `{}` | Dashboard/API Service annotations. |
-| service.port | int | `3001` | Port of the dashboard/API Service. The pods listen on 3001 whatever it is. |
+| service.port | int | `3001` | Port of the dashboard/API Service. It forwards to `apiPort`. |
 | service.type | string | `"ClusterIP"` | Dashboard/API Service type. |
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
 | serviceAccount.create | bool | `false` | Create a ServiceAccount for the pod. |

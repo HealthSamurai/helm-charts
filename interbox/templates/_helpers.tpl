@@ -7,8 +7,21 @@
 {{- default .Chart.Name .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{/* The port the API listens on: the image sets no API_PORT, so the API keeps its default. */}}
-{{- define "interbox.apiPort" -}}3001{{- end -}}
+{{/* The API port as a whole number; fails the render on a value outside 1..65535 or one the MLLP port takes. */}}
+{{- define "interbox.apiPort" -}}
+{{- $raw := toString .Values.apiPort -}}
+{{- $port := 0 -}}
+{{- if regexMatch "^[0-9]{1,5}$" $raw -}}
+{{- $port = atoi $raw -}}
+{{- end -}}
+{{- if or (lt $port 1) (gt $port 65535) -}}
+{{- fail (printf "apiPort must be a whole number from 1 to 65535, got %q" $raw) -}}
+{{- end -}}
+{{- if and .Values.mllp.enabled (eq $port (int .Values.mllp.port)) -}}
+{{- fail (printf "apiPort %d is already taken by the MLLP port (mllp.port)" $port) -}}
+{{- end -}}
+{{- $port -}}
+{{- end -}}
 
 {{- define "interbox.workspaceServiceUrl" -}}
 http://{{ include "interbox.fullname" . }}-workspace:{{ include "interbox.apiPort" . }}
@@ -78,8 +91,8 @@ app.kubernetes.io/component: workspace
 {{- if or (lt $port 1) (gt $port 65535) -}}
 {{- fail (printf "webhook.port must be a whole number from 1 to 65535, got %q" $raw) -}}
 {{- end -}}
-{{- if eq $port (int .Values.service.port) -}}
-{{- fail (printf "webhook.port %d is already taken by the dashboard/API port (service.port)" $port) -}}
+{{- if eq $port (int (include "interbox.apiPort" .)) -}}
+{{- fail (printf "webhook.port %d is already taken by the API port (apiPort)" $port) -}}
 {{- end -}}
 {{- if and .Values.mllp.enabled (eq $port (int .Values.mllp.port)) -}}
 {{- fail (printf "webhook.port %d is already taken by the MLLP port (mllp.port)" $port) -}}
@@ -95,6 +108,9 @@ app.kubernetes.io/component: workspace
 {{- end -}}
 {{- if eq $key "INTERBOX_WEBHOOK_PORT" -}}
 {{- fail "config.INTERBOX_WEBHOOK_PORT: set webhook.port instead; the chart sets this variable on the container from it, and a different value in a ConfigMap stops the engine at startup" -}}
+{{- end -}}
+{{- if eq $key "API_PORT" -}}
+{{- fail "config.API_PORT: set apiPort instead; the chart sets this variable on both containers from it, and on their ports and Services" -}}
 {{- end -}}
 {{- if eq $key "INTERBOX_WORKSPACE_CACHE" -}}
 {{- fail "config.INTERBOX_WORKSPACE_CACHE: remove it; the workspace service keeps its checkout on its volume at the engine's default path, and another path would leave the checkout off the volume" -}}
