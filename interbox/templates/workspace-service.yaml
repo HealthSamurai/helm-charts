@@ -78,9 +78,6 @@ spec:
             {{- /* The engine's default INTERBOX_WORKSPACE_CACHE. */}}
             - name: interbox-workspace-checkout
               mountPath: /tmp/interbox-engine
-            {{- with .Values.volumeMounts }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
       volumes:
         - name: interbox-workspace-checkout
           {{- if .Values.workspaceService.persistence.enabled }}
@@ -89,9 +86,6 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
-        {{- with .Values.volumes }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
       restartPolicy: Always
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with include "interbox.scheduling" . }}

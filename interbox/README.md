@@ -266,10 +266,16 @@ strategy. It takes the same env and secrets as the main pods: the `INTERBOX_WORK
 settings and credentials, `DATABASE_URL`, auth and, for the assistant, a Claude login
 (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
 
-Its checkout lives on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive a
-restart. `workspaceService.persistence.enabled: false` uses an `emptyDir` instead, and the
-edits go away with the pod. While the workspace service is down, the main pods keep running
-and restart from the last published build.
+Its checkout lives on an `emptyDir` by default, so a restart clones the branch again and loses
+edits nobody pushed. `workspaceService.persistence.enabled: true` keeps it on a ReadWriteOnce
+PersistentVolumeClaim instead; the claim needs a default StorageClass or
+`workspaceService.persistence.storageClass`, or it stays Pending and no build is ever
+published. While the workspace service is down, the main pods keep running and restart from
+the last published build.
+
+`volumes` and `volumeMounts` go on the main pods only: the workspace service builds the
+workspace and reads no data. A ReadWriteOnce volume there needs `strategy: {type: Recreate}`,
+since during a rolling update the new pod cannot attach it while the old one runs.
 
 With `networkPolicy.enabled`, the workspace pod accepts `apiPort` only from the main pods.
 It carries the label `app: interbox-workspace`, not `app: interbox`, so a NetworkPolicy of
@@ -415,11 +421,11 @@ route:
 | verticalPodAutoscaler.minAllowed | object | `{}` |  |
 | verticalPodAutoscaler.updatePolicy.minReplicas | int | `1` | Lets the updater act on the single pod; by default it skips workloads with fewer than 2 replicas. `null` keeps that default. |
 | verticalPodAutoscaler.updatePolicy.updateMode | string | `"Initial"` |  |
-| volumeMounts | list | `[]` | Extra container volume mounts. |
-| volumes | list | `[]` | Extra pod volumes. |
+| volumeMounts | list | `[]` | Extra container volume mounts for the main pods. |
+| volumes | list | `[]` | Extra volumes for the main pods. A ReadWriteOnce volume needs `strategy: {type: Recreate}`. |
 | webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port. |
 | webhook.port | int | `3002` | Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: `config.INTERBOX_WEBHOOK_PORT` fails the render, a different value in an extra ConfigMap rejects startup, and one in a Secret is ignored. |
-| workspaceService.persistence.enabled | bool | `true` | Keep the workspace service's workspace checkout on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive restarts. `false` uses an `emptyDir` that goes away with the pod. |
+| workspaceService.persistence.enabled | bool | `false` | Keep the workspace service's checkout on a ReadWriteOnce PersistentVolumeClaim, so edits nobody pushed survive a restart. It needs a default StorageClass or `storageClass`; a claim that stays Pending means no build is ever published. `false` keeps the checkout on an `emptyDir`, and a restart clones the branch again. |
 | workspaceService.persistence.size | string | `"5Gi"` | PVC size. |
 | workspaceService.persistence.storageClass | string | `""` | PVC `storageClassName`. Empty = the cluster default. |
 | workspaceService.resources | object | `{"requests":{"cpu":"100m","ephemeral-storage":"1Gi","memory":"768Mi"}}` | Resources of the workspace service pod, which runs `bun install` and the workspace build. Your keys merge with these; set one to `null` to drop it. |

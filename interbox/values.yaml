@@ -88,8 +88,8 @@ workspaceService:
       memory: 768Mi
       ephemeral-storage: 1Gi
   persistence:
-    # -- Keep the workspace service's workspace checkout on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive restarts. `false` uses an `emptyDir` that goes away with the pod.
-    enabled: true
+    # -- Keep the workspace service's checkout on a ReadWriteOnce PersistentVolumeClaim, so edits nobody pushed survive a restart. It needs a default StorageClass or `storageClass`; a claim that stays Pending means no build is ever published. `false` keeps the checkout on an `emptyDir`, and a restart clones the branch again.
+    enabled: false
     # -- PVC size.
     size: 5Gi
     # -- PVC `storageClassName`. Empty = the cluster default.
@@ -111,9 +111,9 @@ securityContext:
 podAnnotations: {}
 # -- Deployment annotations.
 deploymentAnnotations: {}
-# -- Extra pod volumes.
+# -- Extra volumes for the main pods. A ReadWriteOnce volume needs `strategy: {type: Recreate}`.
 volumes: []
-# -- Extra container volume mounts.
+# -- Extra container volume mounts for the main pods.
 volumeMounts: []
 
 serviceAccount:

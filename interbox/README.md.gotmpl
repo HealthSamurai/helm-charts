@@ -266,10 +266,16 @@ strategy. It takes the same env and secrets as the main pods: the `INTERBOX_WORK
 settings and credentials, `DATABASE_URL`, auth and, for the assistant, a Claude login
 (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
 
-Its checkout lives on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive a
-restart. `workspaceService.persistence.enabled: false` uses an `emptyDir` instead, and the
-edits go away with the pod. While the workspace service is down, the main pods keep running
-and restart from the last published build.
+Its checkout lives on an `emptyDir` by default, so a restart clones the branch again and loses
+edits nobody pushed. `workspaceService.persistence.enabled: true` keeps it on a ReadWriteOnce
+PersistentVolumeClaim instead; the claim needs a default StorageClass or
+`workspaceService.persistence.storageClass`, or it stays Pending and no build is ever
+published. While the workspace service is down, the main pods keep running and restart from
+the last published build.
+
+`volumes` and `volumeMounts` go on the main pods only: the workspace service builds the
+workspace and reads no data. A ReadWriteOnce volume there needs `strategy: {type: Recreate}`,
+since during a rolling update the new pod cannot attach it while the old one runs.
 
 With `networkPolicy.enabled`, the workspace pod accepts `apiPort` only from the main pods.
 It carries the label `app: interbox-workspace`, not `app: interbox`, so a NetworkPolicy of
