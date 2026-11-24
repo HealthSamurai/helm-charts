@@ -124,7 +124,7 @@ serviceAccount:
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL`, `API_PORT`, `INTERBOX_WEBHOOK_PORT` and `INTERBOX_WORKSPACE_CACHE` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL`, `API_PORT`, `INTERBOX_INSTANCE_ID`, `INTERBOX_WEBHOOK_PORT` and `INTERBOX_WORKSPACE_CACHE` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and
 # `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
 config:
   INTERBOX_WORKSPACE_POLL_MS: "5000"

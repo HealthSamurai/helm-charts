@@ -191,6 +191,9 @@ app.kubernetes.io/component: workspace
 {{- if eq $key "API_PORT" -}}
 {{- fail "config.API_PORT: set apiPort instead; the chart sets this variable on both containers from it, and on their ports and Services" -}}
 {{- end -}}
+{{- if eq $key "INTERBOX_INSTANCE_ID" -}}
+{{- fail "config.INTERBOX_INSTANCE_ID: remove it; every pod would share one instance id, which mixes up their heartbeats and the active lease. Each pod uses its own name" -}}
+{{- end -}}
 {{- if eq $key "INTERBOX_WORKSPACE_CACHE" -}}
 {{- fail "config.INTERBOX_WORKSPACE_CACHE: remove it; the workspace service keeps its checkout on its volume at the engine's default path, and another path would leave the checkout off the volume" -}}
 {{- end -}}

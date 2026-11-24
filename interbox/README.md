@@ -320,11 +320,11 @@ until the image moves to 2.5.0.
 ## Configuration
 
 The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
-`secrets`), `API_PORT` (set `apiPort`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and
-`INTERBOX_WORKSPACE_CACHE` (the workspace service keeps its checkout on its volume at the
-engine's default path). It cannot see keys in extra ConfigMaps. Changes to the chart's own
-ConfigMap and Secret restart the pods; external ConfigMap and Secret updates need a
-rollout.
+`secrets`), `API_PORT` (set `apiPort`), `INTERBOX_INSTANCE_ID` (each pod uses its own name),
+`INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and `INTERBOX_WORKSPACE_CACHE` (the workspace
+service keeps its checkout on its volume at the engine's default path). It cannot see keys in
+extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods; external
+ConfigMap and Secret updates need a rollout.
 
 ## Gateway API
 
@@ -351,7 +351,7 @@ route:
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | apiPort | int | `3001` | Port the API and dashboard listen on, in the main pods and the workspace service. The chart sets `API_PORT` from it. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
-| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL`, `API_PORT`, `INTERBOX_WEBHOOK_PORT` and `INTERBOX_WORKSPACE_CACHE` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
+| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL`, `API_PORT`, `INTERBOX_INSTANCE_ID`, `INTERBOX_WEBHOOK_PORT` and `INTERBOX_WORKSPACE_CACHE` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). |

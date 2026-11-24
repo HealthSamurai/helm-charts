@@ -320,11 +320,11 @@ until the image moves to 2.5.0.
 ## Configuration
 
 The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
-`secrets`), `API_PORT` (set `apiPort`), `INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and
-`INTERBOX_WORKSPACE_CACHE` (the workspace service keeps its checkout on its volume at the
-engine's default path). It cannot see keys in extra ConfigMaps. Changes to the chart's own
-ConfigMap and Secret restart the pods; external ConfigMap and Secret updates need a
-rollout.
+`secrets`), `API_PORT` (set `apiPort`), `INTERBOX_INSTANCE_ID` (each pod uses its own name),
+`INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and `INTERBOX_WORKSPACE_CACHE` (the workspace
+service keeps its checkout on its volume at the engine's default path). It cannot see keys in
+extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods; external
+ConfigMap and Secret updates need a rollout.
 
 ## Gateway API
 
