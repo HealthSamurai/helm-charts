@@ -240,18 +240,18 @@ The default `RollingUpdate` strategy (`maxSurge: 1`, `maxUnavailable: 0`) starts
 and waits for it to be ready before it stops an old one. `strategy: {type: Recreate}` still
 works: the chart drops `rollingUpdate` from it.
 
-On interbox 2.5.0 or later, set the readiness path for rolling deploys, so only
-ready pods with bound listeners get traffic:
+With an image tagged 2.5.0 or later, the main pods' readiness probe uses `/api/ready`, so
+during a rolling deploy only pods with bound listeners get traffic. Any other tag, such as
+`edge`, keeps `/api/health`: older engines' `/api/ready` also turns unready without a license
+or while a pipeline is in backoff, and Kubernetes then takes the pod out of the dashboard, MLLP
+and webhook Services at once. On an image the tag does not name, such as `edge` on 2.5.0 or
+later, set it yourself:
 
 ```yaml
 probe:
   readiness:
     path: /api/ready
 ```
-
-Older engines must keep the default `/api/health`: their `/api/ready` also turns unready
-without a license or while a pipeline is in backoff, and Kubernetes then takes the pod out
-of the dashboard, MLLP and webhook Services at once.
 
 ## Workspace service
 

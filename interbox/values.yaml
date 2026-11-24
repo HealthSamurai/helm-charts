@@ -34,7 +34,7 @@ probe:
     periodSeconds: 20
     timeoutSeconds: 5
     failureThreshold: 3
-  # -- Readiness probe. It inherits `probe.path`. On interbox 2.5.0 or later set `path: /api/ready`, so only ready pods with bound listeners get traffic; older engines must keep `/api/health`. See the README.
+  # -- Readiness probe. With an image tagged 2.5.0 or later it uses `/api/ready`, so only pods with bound listeners get traffic; otherwise it inherits `probe.path`. A `path` here wins. See the README.
   readiness:
     periodSeconds: 10
     timeoutSeconds: 3

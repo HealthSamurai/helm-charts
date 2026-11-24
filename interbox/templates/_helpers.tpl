@@ -80,15 +80,27 @@ serviceAccountName: {{ include "interbox.serviceAccountName" . }}
 automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
 {{- end -}}
 
+{{/* /api/ready only on an image tagged 2.5.0 or later: an older engine's /api/ready turns unready while any pipeline is in backoff, and a tag such as edge says no version. */}}
+{{- define "interbox.readinessPath" -}}
+{{- $tag := toString (.Values.image.tag | default .Chart.AppVersion) | trimPrefix "v" -}}
+{{- if and (eq (toString .Values.probe.path) "/api/health") (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+" $tag) (semverCompare ">=2.5.0-0" $tag) -}}
+/api/ready
+{{- else -}}
+{{ .Values.probe.path }}
+{{- end -}}
+{{- end -}}
+
 {{/* The probes `probe` sets, from a dict of `root` and an optional `path` that every probe then uses. */}}
 {{- define "interbox.probes" -}}
 {{- $probe := .root.Values.probe -}}
 {{- $fixed := .path -}}
+{{- $root := .root -}}
 {{- range $kind := list "startup" "liveness" "readiness" }}
 {{- with index $probe $kind }}
+{{- $default := eq $kind "readiness" | ternary (include "interbox.readinessPath" $root) $probe.path }}
 {{ $kind }}Probe:
   httpGet:
-    path: {{ $fixed | default .path | default $probe.path }}
+    path: {{ $fixed | default .path | default $default }}
     port: http
     scheme: {{ $probe.scheme | default "HTTP" }}
   {{- omit . "path" | toYaml | nindent 2 }}

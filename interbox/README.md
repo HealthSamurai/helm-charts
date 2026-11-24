@@ -240,18 +240,18 @@ The default `RollingUpdate` strategy (`maxSurge: 1`, `maxUnavailable: 0`) starts
 and waits for it to be ready before it stops an old one. `strategy: {type: Recreate}` still
 works: the chart drops `rollingUpdate` from it.
 
-On interbox 2.5.0 or later, set the readiness path for rolling deploys, so only
-ready pods with bound listeners get traffic:
+With an image tagged 2.5.0 or later, the main pods' readiness probe uses `/api/ready`, so
+during a rolling deploy only pods with bound listeners get traffic. Any other tag, such as
+`edge`, keeps `/api/health`: older engines' `/api/ready` also turns unready without a license
+or while a pipeline is in backoff, and Kubernetes then takes the pod out of the dashboard, MLLP
+and webhook Services at once. On an image the tag does not name, such as `edge` on 2.5.0 or
+later, set it yourself:
 
 ```yaml
 probe:
   readiness:
     path: /api/ready
 ```
-
-Older engines must keep the default `/api/health`: their `/api/ready` also turns unready
-without a license or while a pipeline is in backoff, and Kubernetes then takes the pod out
-of the dashboard, MLLP and webhook Services at once.
 
 ## Workspace service
 
@@ -387,7 +387,7 @@ route:
 | priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the interbox pods for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
 | probe.path | string | `"/api/health"` | Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service uses `/api/health` for every probe and takes the other probe settings. |
-| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. On interbox 2.5.0 or later set `path: /api/ready`, so only ready pods with bound listeners get traffic; older engines must keep `/api/health`. See the README. |
+| probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. With an image tagged 2.5.0 or later it uses `/api/ready`, so only pods with bound listeners get traffic; otherwise it inherits `probe.path`. A `path` here wins. See the README. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe, for the main pods and the workspace service. Generous: the workspace service clones, installs and builds the workspace on its first start. |
 | replicaCount | int | `1` | Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes. Add replicas for availability, not throughput. `0` also stops the workspace service. |
