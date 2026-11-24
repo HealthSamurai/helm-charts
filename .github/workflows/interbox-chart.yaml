@@ -1,0 +1,50 @@
+name: interbox chart
+
+on:
+  pull_request:
+    paths:
+      - interbox/**
+      - .github/workflows/interbox-chart.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, render and README
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+
+      - name: Lint
+        run: helm lint interbox
+
+      - name: Render
+        shell: bash
+        run: |
+          set -euo pipefail
+          render() { echo "helm template $*"; helm template t interbox "$@" > /dev/null; }
+          render
+          render -f interbox/values-aks.yaml
+          render --set networkPolicy.enabled=true --set webhook.enabled=true
+          render --set workspaceService.persistence.enabled=true
+          render --set probe.startup=null --set probe.liveness=null --set probe.readiness=null
+          render --set replicaCount=0
+          render --set 'volumes[0].name=data' --set 'volumes[0].emptyDir.medium=Memory' --set 'volumeMounts[0].name=data' --set 'volumeMounts[0].mountPath=/data'
+          render --set apiPort=8080 --set service.port=8080
+          render --set image.tag=2.4.2
+          render --set image.tag=2.5.0
+          if helm template t interbox --set config.DATABASE_URL=x > /dev/null 2>&1; then
+            echo "config.DATABASE_URL must fail the render"
+            exit 1
+          fi
+
+      - name: README matches helm-docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
+          "$(go env GOPATH)/bin/helm-docs" --chart-search-root interbox
+          git diff --exit-code interbox/README.md
