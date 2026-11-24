@@ -204,18 +204,18 @@ source when the list is empty, which leaves the filtering to `loadBalancerSource
 `externalTrafficPolicy: Local` the pod sees the senders' own IPs, so `ipBlock` peers match
 them. With `webhook.enabled`, the webhook port accepts the `webhookFrom` peers, or any source
 when the list is empty. A webhook source without a `secret` accepts every caller that reaches
-the port, so give it one or narrow `webhookFrom`. Egress stays open, because the pod clones its
-workspace and reaches Postgres and Aidbox.
+the port, so give it one or narrow `webhookFrom`. Egress stays open: the workspace service clones
+the workspace, and the main pods reach Postgres and Aidbox.
 
 ## Vertical Pod Autoscaler
 
 Off by default. `verticalPodAutoscaler.enabled: true` adds a `VerticalPodAutoscaler` for the
-Deployment, and the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+main Deployment, and the cluster needs the [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
 CRDs, recommender and admission controller.
 
 The default `updatePolicy.updateMode: Initial` applies a recommendation only when a pod is
-created and never evicts it. interbox runs a single pod that builds the workspace on boot, so
-an eviction is downtime. A new recommendation therefore reaches only the next pod, and
+created and never evicts it. An eviction restarts a pod, and with one replica that is downtime.
+A new recommendation therefore reaches only the next pod, and
 `kubectl rollout restart deployment/interbox` applies it now. Until VPA has a first
 recommendation, pods keep plain `resources`.
 
@@ -233,7 +233,7 @@ verticalPodAutoscaler:
 ## Replicas and rollouts
 
 Every ready replica gets traffic through the Services. With `replicaCount` above 1, a lease
-in Postgres picks one replica to process; the others stand by and take over when it stops.
+in Postgres picks one replica to process. The others stand by and take over when it stops.
 Replicas add availability, not throughput.
 
 The default `RollingUpdate` strategy (`maxSurge: 1`, `maxUnavailable: 0`) starts a new pod
@@ -253,49 +253,60 @@ Older engines must keep the default `/api/health`: their `/api/ready` also turns
 without a license or while a pipeline is in backoff, and Kubernetes then takes the pod out
 of the dashboard, MLLP and webhook Services at once.
 
-Upgrading from chart 0.3.x with `RollingUpdate`: engines 2.1.x and older briefly run two
-pods during a rollout, so a custom polling source (`defineSource` with `kind: pull`) can
-ingest a record twice. Engines 2.4.x and 2.5 or later are safe.
-
 ## Workspace service
 
-The `interbox-workspace` Deployment is the one pod that owns the editable workspace
-checkout. It runs the dashboard assistant and the workspace actions, builds the workspace
-once per revision and publishes the build to Postgres. The main replicas load that build
-and no longer clone or build; the main pods reach the workspace service through
-`INTERBOX_WORKSPACE_SERVICE_URL` (Service `interbox-workspace`, port `3001`). It starts with the
-`workspace` argument, runs one replica with `Recreate`, and takes the same env and secrets
-as the main pods: the `INTERBOX_WORKSPACE_*` settings and credentials, `DATABASE_URL`, auth
-and, for the assistant, a Claude login (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
+The `interbox-workspace` Deployment runs one pod, the workspace service. It owns the editable
+workspace checkout, runs the dashboard assistant and the workspace actions, builds the
+workspace once per revision and publishes the build to Postgres. The main pods load that
+build and never clone or build. They reach the workspace service through
+`INTERBOX_WORKSPACE_SERVICE_URL`, set to the Service `interbox-workspace` on port `3001`.
 
-While the workspace service is down, the replicas keep running and restart from the last published
-build. Its checkout lives on a ReadWriteOnce PersistentVolumeClaim
-(`workspaceService.persistence`; `false` falls back to an `emptyDir`), so uncommitted edits survive
-workspace service restarts. With `networkPolicy.enabled`, its pods accept port `3001` only from the
-main interbox pods.
+The pod runs the same image with the `workspace` argument, one replica and the `Recreate`
+strategy. It takes the same env and secrets as the main pods: the `INTERBOX_WORKSPACE_*`
+settings and credentials, `DATABASE_URL`, auth and, for the assistant, a Claude login
+(`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
 
-This chart needs engine 2.5.0 or later, and engine 2.5.0 needs this chart. An older image ignores
-the `workspace` argument, so the workspace service pod starts a second full engine and API that
-work alongside the main replicas. Engine 2.5.0 under chart 0.3.x has no workspace service, so its
-replicas find no published build and stay unready. Move the image and the chart in the same
-upgrade. A deployment whose chart version floats (a `>=` range, or none) takes 0.4.0 as soon as it
-is released, whatever its image: pin it below 0.4.0 until its image moves too.
+Its checkout lives on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive a
+restart. `workspaceService.persistence.enabled: false` uses an `emptyDir` instead, and the
+edits go away with the pod. While the workspace service is down, the main pods keep running
+and restart from the last published build.
+
+With `networkPolicy.enabled`, the workspace pod accepts port `3001` only from the main pods.
+It carries the label `app: interbox-workspace`, not `app: interbox`, so a NetworkPolicy of
+your own that selects the main pods does not cover it.
+
+## Upgrading from chart 0.3.x
+
+Chart 0.4.0 needs engine 2.5.0 or later, and engine 2.5.0 needs chart 0.4.0. Move the image
+and the chart in the same upgrade:
+
+- Engine 2.5.0 under chart 0.3.x has no workspace service. Its pods find no published build
+  and stay unready.
+- An older image under chart 0.4.0 ignores the `workspace` argument, so the workspace pod runs
+  a second full engine and API alongside the main pods. With engine 2.1.x or older, a custom
+  polling source (`defineSource` with `kind: pull`) can then ingest a record twice. A 2.4.x
+  engine runs safely as a second replica, but the workspace pod's readiness follows that
+  engine's `/api/ready`, which turns unready while a pipeline is in backoff.
+
+A deployment whose chart version floats, with a `>=` range or none, takes 0.4.0 as soon as it
+is released, whatever its image. Pin it below 0.4.0 until its image moves too.
 
 ## Pod lifecycle
 
-- Each pod keeps its workspace cache on an `emptyDir` (`workspaceCache`), so a
-  restarted container reuses the checkout and a replaced pod starts clean.
+- Each main pod keeps the builds it unpacks on an `emptyDir` (`workspaceCache`), so a
+  restarted container reuses them and a replaced pod unpacks the current build again.
   `resources` requests 1Gi of `ephemeral-storage` for the cache, the container
-  filesystem and the logs together; raise it for a workspace with heavy dependencies.
-  There is no limit by default. With `resources.limits.ephemeral-storage` set,
-  Kubernetes evicts a pod that outgrows it, and its replacement starts with an empty
-  cache. A limit below the 1Gi request makes Kubernetes reject the pod, so lower
+  filesystem and the logs together. There is no limit by default. With
+  `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod that outgrows it,
+  and its replacement starts with an empty cache. A limit below the 1Gi request makes Kubernetes reject the pod, so lower
   `resources.requests.ephemeral-storage` with it. With a volume of your own, delete
   old shared-volume caches only after their pods stop.
 - All probes use `/api/health` by default, which answers while the API process runs.
   An unready pod loses Service traffic without a restart. See
   [Replicas and rollouts](#replicas-and-rollouts) for `/api/ready`.
-- Each probe can override `path`; otherwise it inherits `probe.path`.
+- Each probe can set its own `path`, and otherwise inherits `probe.path`. The
+  workspace service ignores both: its startup and liveness probes use `/api/health`
+  and its readiness probe `/api/ready`. It takes their other settings from `probe`.
 - `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
   This counts toward `terminationGracePeriodSeconds`, so the chart refuses a delay
   that is not below it. The wait uses the kubelet's built-in `preStop.sleep` action,
@@ -372,9 +383,9 @@ route:
 | probe.path | string | `"/api/health"` | Default HTTP path for every probe. A probe's own `path` wins. |
 | probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. On interbox 2.5.0 or later set `path: /api/ready`, so only ready pods with bound listeners get traffic; older engines must keep `/api/health`. See the README. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
-| probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe. Generous: the pod clones, installs and builds the workspace on boot. |
+| probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe, for the main pods and the workspace service. Generous: the workspace service clones, installs and builds the workspace on its first start. |
 | replicaCount | int | `1` | Pod replicas. Every ready replica gets traffic, and a lease in Postgres picks the one that processes (interbox 2.4.0 and later support multiple replicas). Add replicas for availability, not throughput. |
-| resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it. |
+| resources | object | `{"requests":{"ephemeral-storage":"1Gi"}}` | Resources of each main pod. The main pods load published builds; `workspaceService.resources` covers the workspace build. `ephemeral-storage` covers the unpacked builds, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it. |
 | route.main.additionalRules | list | `[]` | Rules rendered ahead of the rule to the Service. Templated. |
 | route.main.annotations | object | `{}` | Route annotations. Templated. |
 | route.main.enabled | bool | `false` | Render a Gateway API HTTPRoute to the dashboard/API Service. Each key under `route` is one route; `main` takes the release's full name, others add `-<key>`. Needs the Gateway API CRDs and a Gateway. |
@@ -408,7 +419,7 @@ route:
 | volumes | list | `[]` | Extra pod volumes. |
 | webhook.enabled | bool | `false` | Expose the webhook port: a container port, `INTERBOX_WEBHOOK_PORT`, and the `interbox-webhook` Service, always ClusterIP whatever `service.type` is. One port serves every `webhookSource` and every `pullSender`; the engine routes each request to its pipeline by `path`. Turn it on when the workspace declares either: while it is off, the engine still listens on `webhook.port` for them, but no Service carries the port. |
 | webhook.port | int | `3002` | Webhook port. The chart always sets `INTERBOX_WEBHOOK_PORT` on the container from it, whether `enabled` is on or off. Set the port here only: `config.INTERBOX_WEBHOOK_PORT` fails the render, a different value in an extra ConfigMap rejects startup, and one in a Secret is ignored. |
-| workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
+| workspaceCache.enabled | bool | `true` | Mount a pod-local `emptyDir` at the main pods' workspace cache path. The builds a pod unpacks then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own. |
 | workspaceCache.mountPath | string | `"/tmp/interbox-engine"` | Where to mount it. A different `config.INTERBOX_WORKSPACE_CACHE` fails the render; the engine's default is `/tmp/interbox-engine`. |
 | workspaceCache.sizeLimit | string | `""` | `emptyDir.sizeLimit`, such as `2Gi`, for a cap on the cache alone. Kubernetes evicts a pod whose cache outgrows it. Empty = only `resources.limits.ephemeral-storage`, when set, bounds it. |
 | workspaceService.persistence.enabled | bool | `true` | Keep the workspace service's workspace checkout on a ReadWriteOnce PersistentVolumeClaim, so uncommitted edits survive restarts. `false` uses an `emptyDir` that goes away with the pod. |

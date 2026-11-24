@@ -24,7 +24,7 @@ probe:
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
-  # -- Startup probe. Generous: the pod clones, installs and builds the workspace on boot.
+  # -- Startup probe, for the main pods and the workspace service. Generous: the workspace service clones, installs and builds the workspace on its first start.
   startup:
     initialDelaySeconds: 10
     periodSeconds: 10
@@ -52,7 +52,7 @@ terminationGracePeriodSeconds: 30
 # -- Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds` and must stay below it; `0` turns it off.
 preStopDelaySeconds: 5
 
-# -- Pod resources. The boot-time workspace build is memory-hungry: set a generous memory limit or none. `ephemeral-storage` covers the workspace cache, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it.
+# -- Resources of each main pod. The main pods load published builds; `workspaceService.resources` covers the workspace build. `ephemeral-storage` covers the unpacked builds, the container filesystem and the logs: the request keeps the pod off a node with less free disk. Add `limits.ephemeral-storage` for a cap; Kubernetes evicts a pod that outgrows it, and rejects the pod when the limit is below the request, so lower `requests.ephemeral-storage` with it. Your keys merge with these; set one to `null` to drop it.
 resources:
   requests:
     ephemeral-storage: 1Gi
@@ -117,7 +117,7 @@ volumes: []
 volumeMounts: []
 
 workspaceCache:
-  # -- Mount a pod-local `emptyDir` at the workspace cache path. The checkout, dependencies and bundles then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own.
+  # -- Mount a pod-local `emptyDir` at the main pods' workspace cache path. The builds a pod unpacks then survive a container restart and go away with the pod. `false` keeps the cache in the container filesystem, or leaves the path to a volume of your own.
   enabled: true
   # -- Where to mount it. A different `config.INTERBOX_WORKSPACE_CACHE` fails the render; the engine's default is `/tmp/interbox-engine`.
   mountPath: /tmp/interbox-engine

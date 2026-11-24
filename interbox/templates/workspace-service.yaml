@@ -54,6 +54,10 @@ spec:
       serviceAccountName: {{ include "interbox.serviceAccountName" . }}
       {{- end }}
       automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- /* Cloud block volumes start root-owned; the group lets the non-root user write the checkout. */}}
+      securityContext:
+        fsGroup: {{ (.Values.securityContext | default dict).runAsGroup | default 1000 }}
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: workspace
           image: {{ include "interbox.image" . }}
@@ -68,6 +72,8 @@ spec:
             {{- /* The same variable the main pod sets: a Service named <release>-webhook makes Kubernetes inject a value the engine refuses. */}}
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
+            - name: INTERBOX_WORKSPACE_CACHE
+              value: /var/lib/interbox-workspace
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config
@@ -82,24 +88,30 @@ spec:
                 name: {{ . }}
             {{- end }}
           {{- $probe := .Values.probe }}
+          {{- with $probe.startup }}
           startupProbe:
             httpGet:
               path: /api/health
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit $probe.startup "path" | toYaml | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with $probe.liveness }}
           livenessProbe:
             httpGet:
               path: /api/health
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit $probe.liveness "path" | toYaml | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with $probe.readiness }}
           readinessProbe:
             httpGet:
               path: /api/ready
               port: http
               scheme: {{ $probe.scheme | default "HTTP" }}
-            {{- omit $probe.readiness "path" | toYaml | nindent 12 }}
+            {{- omit . "path" | toYaml | nindent 12 }}
+          {{- end }}
           {{- with .Values.workspaceService.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -109,13 +121,13 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: interbox-workspace-cache
-              mountPath: {{ .Values.workspaceCache.mountPath }}
+            - name: interbox-workspace-checkout
+              mountPath: /var/lib/interbox-workspace
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
       volumes:
-        - name: interbox-workspace-cache
+        - name: interbox-workspace-checkout
           {{- if .Values.workspaceService.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "interbox.fullname" . }}-workspace
