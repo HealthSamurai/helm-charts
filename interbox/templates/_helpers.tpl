@@ -7,6 +7,13 @@
 {{- default .Chart.Name .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/* The port the API listens on: the image sets no API_PORT, so the API keeps its default. */}}
+{{- define "interbox.apiPort" -}}3001{{- end -}}
+
+{{- define "interbox.workspaceServiceUrl" -}}
+http://{{ include "interbox.fullname" . }}-workspace:{{ include "interbox.apiPort" . }}
+{{- end -}}
+
 {{- define "interbox.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

@@ -397,7 +397,7 @@ route:
 | secrets.existingSecretName | string | `""` | Pre-provisioned Secret to use instead of rendering one (External Secrets Operator, sealed-secrets, …). |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}}` | Container securityContext. The image runs as non-root `bun` (uid 1000) and writes to HOME and `/tmp`. |
 | service.annotations | object | `{}` | Dashboard/API Service annotations. |
-| service.port | int | `3001` | Dashboard/API port. |
+| service.port | int | `3001` | Port of the dashboard/API Service. The pods listen on 3001 whatever it is. |
 | service.type | string | `"ClusterIP"` | Dashboard/API Service type. |
 | serviceAccount.annotations | object | `{}` | ServiceAccount annotations. |
 | serviceAccount.create | bool | `false` | Create a ServiceAccount for the pod. |

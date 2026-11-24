@@ -46,7 +46,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ include "interbox.apiPort" . }}
               protocol: TCP
             {{- if .Values.mllp.enabled }}
             - name: mllp
@@ -63,7 +63,7 @@ spec:
             - name: INTERBOX_WEBHOOK_PORT
               value: {{ include "interbox.webhookPort" . | quote }}
             - name: INTERBOX_WORKSPACE_SERVICE_URL
-              value: http://{{ include "interbox.fullname" . }}-workspace:3001
+              value: {{ include "interbox.workspaceServiceUrl" . }}
           envFrom:
             - configMapRef:
                 name: {{ include "interbox.fullname" . }}-config

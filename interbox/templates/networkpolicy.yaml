@@ -58,7 +58,7 @@ spec:
     - Ingress
   ingress:
     - ports:
-        - port: 3001
+        - port: http
           protocol: TCP
       from:
         - podSelector:

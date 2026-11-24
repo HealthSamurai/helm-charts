@@ -168,7 +168,7 @@ database:
 service:
   # -- Dashboard/API Service type.
   type: ClusterIP
-  # -- Dashboard/API port.
+  # -- Port of the dashboard/API Service. The pods listen on 3001 whatever it is.
   port: 3001
   # -- Dashboard/API Service annotations.
   annotations: {}

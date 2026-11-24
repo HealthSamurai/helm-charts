@@ -66,7 +66,7 @@ spec:
             - workspace
           ports:
             - name: http
-              containerPort: 3001
+              containerPort: {{ include "interbox.apiPort" . }}
               protocol: TCP
           env:
             {{- /* The same variable the main pod sets: a Service named <release>-webhook makes Kubernetes inject a value the engine refuses. */}}
@@ -167,5 +167,5 @@ spec:
   ports:
     - name: http
       protocol: TCP
-      port: 3001
+      port: {{ include "interbox.apiPort" . }}
       targetPort: http
