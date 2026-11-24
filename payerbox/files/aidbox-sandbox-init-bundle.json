@@ -248,7 +248,7 @@
         "scope": ["openid", "profile", "email"],
         "auth": {
           "authorization_code": {
-            "redirect_uri": "${DEVELOPER_FRONTEND_URL}/developer/auth/callback",
+            "redirect_uri": "${DEVELOPER_FRONTEND_URL}/api/developer/auth/callback",
             "access_token_expiration": 3600,
             "token_format": "jwt",
             "pkce": true,
