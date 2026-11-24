@@ -68,25 +68,7 @@ spec:
             - name: http
               containerPort: {{ include "interbox.apiPort" . }}
               protocol: TCP
-          env:
-            {{- /* The same variable the main pod sets: a Service named <release>-webhook makes Kubernetes inject a value the engine refuses. */}}
-            - name: INTERBOX_WEBHOOK_PORT
-              value: {{ include "interbox.webhookPort" . | quote }}
-            - name: API_PORT
-              value: {{ include "interbox.apiPort" . | quote }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "interbox.fullname" . }}-config
-            - secretRef:
-                name: {{ include "interbox.secretName" . }}
-            {{- range .Values.extraEnvFromConfigMaps }}
-            - configMapRef:
-                name: {{ . }}
-            {{- end }}
-            {{- range .Values.extraEnvFromSecrets }}
-            - secretRef:
-                name: {{ . }}
-            {{- end }}
+          {{- include "interbox.containerEnv" . | nindent 10 }}
           {{- $probe := .Values.probe }}
           {{- with $probe.startup }}
           startupProbe:
@@ -140,20 +122,8 @@ spec:
         {{- end }}
       restartPolicy: Always
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.priorityClassName }}
-      priorityClassName: {{ . }}
+      {{- with include "interbox.scheduling" . }}
+      {{- . | nindent 6 }}
       {{- end }}
 ---
 apiVersion: v1

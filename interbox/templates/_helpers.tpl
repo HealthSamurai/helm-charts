@@ -26,6 +26,50 @@
 http://{{ include "interbox.fullname" . }}-workspace:{{ include "interbox.apiPort" . }}
 {{- end -}}
 
+{{/* Both pods get the same environment: a 2.4.x engine identifies its configuration by its whole environment, so an older image in the workspace pod must see what the main pods see. */}}
+{{- define "interbox.containerEnv" -}}
+env:
+  {{- /* Set even with webhook.enabled off: a Service named <release>-webhook makes Kubernetes inject INTERBOX_WEBHOOK_PORT=tcp://<ip>:<port> into every pod of the namespace, and the engine refuses that value. env also beats envFrom. */}}
+  - name: INTERBOX_WEBHOOK_PORT
+    value: {{ include "interbox.webhookPort" . | quote }}
+  {{- /* Set, not left to the image: a Service named api would make Kubernetes inject API_PORT=tcp://<ip>:<port>. */}}
+  - name: API_PORT
+    value: {{ include "interbox.apiPort" . | quote }}
+  - name: INTERBOX_WORKSPACE_SERVICE_URL
+    value: {{ include "interbox.workspaceServiceUrl" . }}
+envFrom:
+  - configMapRef:
+      name: {{ include "interbox.fullname" . }}-config
+  - secretRef:
+      name: {{ include "interbox.secretName" . }}
+  {{- range .Values.extraEnvFromConfigMaps }}
+  - configMapRef:
+      name: {{ . }}
+  {{- end }}
+  {{- range .Values.extraEnvFromSecrets }}
+  - secretRef:
+      name: {{ . }}
+  {{- end }}
+{{- end -}}
+
+{{- define "interbox.scheduling" -}}
+{{- with .Values.nodeSelector }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.affinity }}
+affinity:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.tolerations }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.priorityClassName }}
+priorityClassName: {{ . }}
+{{- end }}
+{{- end -}}
+
 {{- define "interbox.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

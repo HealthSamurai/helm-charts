@@ -345,7 +345,7 @@ route:
 | affinity | object | `{}` | Affinity rules for scheduling. |
 | apiPort | int | `3001` | Port the API and dashboard listen on, in the main pods and the workspace service. The chart sets `API_PORT` from it. |
 | automountServiceAccountToken | bool | `false` | Don't mount the ServiceAccount token; interbox never calls the Kubernetes API. |
-| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` and `INTERBOX_WEBHOOK_PORT` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
+| config | object | `{"AIDBOX_URL":"http://aidbox:8080","INTERBOX_WORKSPACE_POLL_MS":"5000","MLLP_HOST":"0.0.0.0","MLLP_PORT":"2575"}` | Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL`, `API_PORT`, `INTERBOX_WEBHOOK_PORT` and `INTERBOX_WORKSPACE_CACHE` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source. |
 | database.createDatabase | bool | `true` | The engine creates the `interbox` db on boot (`DATABASE_URL` user needs `CREATEDB`). `false` sets `INTERBOX_SKIP_ENSURE_DB`: pre-create the db yourself. |
 | deploymentAnnotations | object | `{}` | Deployment annotations. |
 | extraEnvFromConfigMaps | list | `[]` | Extra ConfigMaps to load env from (envFrom). |
@@ -378,9 +378,9 @@ route:
 | nodeSelector | object | `{}` | Node selector for scheduling. |
 | podAnnotations | object | `{}` | Pod annotations. |
 | preStopDelaySeconds | int | `5` | Seconds the kubelet waits in `preStop` (the built-in `sleep` action, Kubernetes 1.30+), so Service routing drains before shutdown. Counts toward `terminationGracePeriodSeconds` and must stay below it; `0` turns it off. |
-| priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the single pod for less important work. |
+| priorityClassName | string | `""` | Pod priority class, so the scheduler doesn't preempt the interbox pods for less important work. |
 | probe.liveness | object | `{"failureThreshold":3,"periodSeconds":20,"timeoutSeconds":5}` | Liveness probe. |
-| probe.path | string | `"/api/health"` | Default HTTP path for every probe. A probe's own `path` wins. |
+| probe.path | string | `"/api/health"` | Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service keeps its own paths and takes the other probe settings. |
 | probe.readiness | object | `{"failureThreshold":3,"periodSeconds":10,"timeoutSeconds":3}` | Readiness probe. It inherits `probe.path`. On interbox 2.5.0 or later set `path: /api/ready`, so only ready pods with bound listeners get traffic; older engines must keep `/api/health`. See the README. |
 | probe.scheme | string | `"HTTP"` | Probe scheme (HTTP / HTTPS). |
 | probe.startup | object | `{"failureThreshold":60,"initialDelaySeconds":10,"periodSeconds":10}` | Startup probe, for the main pods and the workspace service. Generous: the workspace service clones, installs and builds the workspace on its first start. |

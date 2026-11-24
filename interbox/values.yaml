@@ -20,7 +20,7 @@ image:
 imagePullSecrets: []
 
 probe:
-  # -- Default HTTP path for every probe. A probe's own `path` wins.
+  # -- Default HTTP path for every probe of the main pods. A probe's own `path` wins. The workspace service keeps its own paths and takes the other probe settings.
   path: /api/health
   # -- Probe scheme (HTTP / HTTPS).
   scheme: HTTP
@@ -74,7 +74,7 @@ nodeSelector: {}
 affinity: {}
 # -- Tolerations for scheduling.
 tolerations: []
-# -- Pod priority class, so the scheduler doesn't preempt the single pod for less important work.
+# -- Pod priority class, so the scheduler doesn't preempt the interbox pods for less important work.
 priorityClassName: ""
 
 # -- Don't mount the ServiceAccount token; interbox never calls the Kubernetes API.
@@ -124,7 +124,7 @@ serviceAccount:
   # -- ServiceAccount annotations.
   annotations: {}
 
-# -- Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL` and `INTERBOX_WEBHOOK_PORT` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and
+# -- Non-secret env → ConfigMap (envFrom). Keys are env var names; `DATABASE_URL`, `API_PORT`, `INTERBOX_WEBHOOK_PORT` and `INTERBOX_WORKSPACE_CACHE` fail the render. `INTERBOX_WORKSPACE_GIT_URL` and
 # `INTERBOX_PUBLIC_URL` are required. `MLLP_HOST` and `MLLP_PORT` feed the workspace's MLLP source.
 config:
   INTERBOX_WORKSPACE_POLL_MS: "5000"
