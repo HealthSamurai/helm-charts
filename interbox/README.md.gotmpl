@@ -289,7 +289,8 @@ and the chart in the same upgrade:
   engine's `/api/ready`, which turns unready while a pipeline is in backoff.
 
 A deployment whose chart version floats, with a `>=` range or none, takes 0.4.0 as soon as it
-is released, whatever its image. Pin it below 0.4.0 until its image moves too.
+is released, whatever its image. With an older image, its workspace pod runs that second engine
+until the image moves to 2.5.0.
 
 ## Pod lifecycle
 
