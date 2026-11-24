@@ -241,11 +241,11 @@ and waits for it to be ready before it stops an old one. `strategy: {type: Recre
 works: the chart drops `rollingUpdate` from it.
 
 With an image tagged 2.5.0 or later, the main pods' readiness probe uses `/api/ready`, so
-during a rolling deploy only pods with bound listeners get traffic. Any other tag, such as
-`edge`, keeps `/api/health`: older engines' `/api/ready` also turns unready without a license
-or while a pipeline is in backoff, and Kubernetes then takes the pod out of the dashboard, MLLP
-and webhook Services at once. On an image the tag does not name, such as `edge` on 2.5.0 or
-later, set it yourself:
+during a rolling deploy only pods with bound listeners get traffic. Any other tag keeps
+`/api/health`. An older engine's `/api/ready` also turns unready without a license or while a
+pipeline is in backoff, and Kubernetes then takes the pod out of the dashboard, MLLP and
+webhook Services at once. A tag such as `edge` names no version, so on `edge` from 2.5.0 on,
+set the path yourself:
 
 ```yaml
 probe:
@@ -261,17 +261,21 @@ workspace once per revision and publishes the build to Postgres. The main pods l
 build and never clone or build. They reach the workspace service through
 `INTERBOX_WORKSPACE_SERVICE_URL`, set to the Service `interbox-workspace` on `apiPort` (`3001`).
 
-The pod runs the same image with the `workspace` argument, one replica and the `Recreate`
-strategy. It takes the same env and secrets as the main pods: the `INTERBOX_WORKSPACE_*`
-settings and credentials, `DATABASE_URL`, auth and, for the assistant, a Claude login
-(`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
+The pod runs the same image with the `workspace` argument, one replica (none with
+`replicaCount: 0`) and the `Recreate` strategy. It gets the same env and secrets as the main
+pods: the `INTERBOX_WORKSPACE_*` settings and credentials, `DATABASE_URL`, auth and, for the
+assistant, a Claude login (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`). Neither pod gets
+Kubernetes Service variables (`enableServiceLinks: false`), so workspace code that reads
+`<NAME>_SERVICE_HOST` has to use the Service's DNS name instead.
 
 Its checkout lives on an `emptyDir` by default, so a restart clones the branch again and loses
 edits nobody pushed. `workspaceService.persistence.enabled: true` keeps it on a ReadWriteOnce
-PersistentVolumeClaim instead; the claim needs a default StorageClass or
+PersistentVolumeClaim instead. The claim needs a default StorageClass or
 `workspaceService.persistence.storageClass`, or it stays Pending and no build is ever
-published. While the workspace service is down, the main pods keep running and restart from
-the last published build.
+published. With the claim, the pod sets `fsGroup` from `workspaceService.podSecurityContext`,
+so the non-root user can write a disk that starts root-owned. On OpenShift, set the group the
+project allows, or `null`. While the workspace service is down, the main pods keep running and
+restart from the last published build.
 
 `volumes` and `volumeMounts` go on the main pods only: the workspace service builds the
 workspace and reads no data. A ReadWriteOnce volume there needs `strategy: {type: Recreate}`,
@@ -304,27 +308,32 @@ until the image moves to 2.5.0.
   `resources.limits.ephemeral-storage` set, Kubernetes evicts a pod that outgrows it.
   A limit below the 1Gi request makes Kubernetes reject the pod, so lower
   `resources.requests.ephemeral-storage` with it.
-- All probes use `/api/health` by default, which answers while the API process runs.
-  An unready pod loses Service traffic without a restart. See
-  [Replicas and rollouts](#replicas-and-rollouts) for `/api/ready`.
-- Each probe can set its own `path`, and otherwise inherits `probe.path`. The
-  workspace service ignores both and uses `/api/health` for every probe, so an older
-  image's `/api/ready` cannot hold back its rollout. It takes their other settings from
-  `probe`.
-- `preStopDelaySeconds` lets routing drain before shutdown (default 5s; `0` disables it).
-  This counts toward `terminationGracePeriodSeconds`, so the chart refuses a delay
-  that is not below it. The wait uses the kubelet's built-in `preStop.sleep` action,
+- The startup and liveness probes use `/api/health`, which answers while the API process
+  runs. For readiness, which depends on the image tag, see
+  [Replicas and rollouts](#replicas-and-rollouts). An unready pod loses Service traffic
+  without a restart.
+- Each probe can set its own `path`, and otherwise inherits `probe.path`. The workspace
+  service ignores both and uses `/api/health` for every probe, so an older image's
+  `/api/ready` cannot hold back its rollout. It takes the other probe settings from `probe`.
+- `preStopDelaySeconds` lets routing drain before shutdown. It defaults to 5s, and `0`
+  turns it off. It counts toward `terminationGracePeriodSeconds`, so the chart refuses a
+  delay that is not below it. The wait uses the kubelet's built-in `preStop.sleep` action,
   so the image needs no `sleep` binary, but the cluster needs Kubernetes 1.30 or
   later. On an older cluster set it to `0`.
 
 ## Configuration
 
-The chart refuses a `config` key that would break the engine: `DATABASE_URL` (put it in
-`secrets`), `API_PORT` (set `apiPort`), `INTERBOX_INSTANCE_ID` (each pod uses its own name),
-`INTERBOX_WEBHOOK_PORT` (set `webhook.port`), and `INTERBOX_WORKSPACE_CACHE` (the workspace
-service keeps its checkout on its volume at the engine's default path). It cannot see keys in
-extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart the pods; external
-ConfigMap and Secret updates need a rollout.
+The chart refuses a `config` key that would break the engine:
+
+- `DATABASE_URL`: put it in `secrets`.
+- `API_PORT`: set `apiPort`.
+- `INTERBOX_INSTANCE_ID`: each pod uses its own name.
+- `INTERBOX_WEBHOOK_PORT`: set `webhook.port`.
+- `INTERBOX_WORKSPACE_CACHE`: the workspace service keeps its checkout on its volume at the
+  engine's default path.
+
+It cannot see keys in extra ConfigMaps. Changes to the chart's own ConfigMap and Secret restart
+the pods. External ConfigMap and Secret updates need a rollout.
 
 ## Gateway API
 

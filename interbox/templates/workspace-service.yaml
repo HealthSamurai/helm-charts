@@ -64,7 +64,7 @@ spec:
               containerPort: {{ include "interbox.apiPort" . }}
               protocol: TCP
           {{- include "interbox.containerEnv" . | nindent 10 }}
-          {{- /* /api/health, not /api/ready: an older image's /api/ready turns unready while a pipeline is in backoff. */}}
+          {{- /* Not interbox.readinessPath: an older image here is a full engine, and on 2.5.0 the workspace role's /api/ready adds nothing. */}}
           {{- with include "interbox.probes" (dict "root" . "path" "/api/health") | trim }}
           {{- . | nindent 10 }}
           {{- end }}

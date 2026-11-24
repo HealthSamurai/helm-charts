@@ -68,7 +68,7 @@ checksum/secret: {{ (include (print .Template.BasePath "/secret.yaml") . | fromY
 {{- end -}}
 
 {{- define "interbox.podBase" -}}
-{{- /* Without this a pod gets a variable per Service in the namespace at its start, so pods started apart differ, and a 2.4.x engine identifies its configuration by its whole environment. */}}
+{{- /* Service variables differ between pods started at different times; see interbox.containerEnv. */}}
 enableServiceLinks: false
 {{- with .Values.imagePullSecrets }}
 imagePullSecrets:
