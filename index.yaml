@@ -234,6 +234,28 @@ entries:
   interbox:
   - apiVersion: v2
     appVersion: edge
+    created: "2026-11-25T04:10:43.974625064Z"
+    description: Integration Engine for Modern Healthcare Solutions
+    digest: 329bb3f81f7d889f957ccdf1d7ad23bd11d97ee55dfe6657d6e94b6a241cc402
+    home: https://www.health-samurai.io/interbox
+    icon: https://raw.githubusercontent.com/HealthSamurai/helm-charts/main/interbox/icon.png
+    keywords:
+    - hl7
+    - hl7v2
+    - fhir
+    - mllp
+    - webhook
+    - integration
+    - interbox
+    maintainers:
+    - name: Health Samurai
+    name: interbox
+    type: application
+    urls:
+    - interbox-0.4.0.tgz
+    version: 0.4.0
+  - apiVersion: v2
+    appVersion: edge
     created: "2026-11-19T11:03:55.615240889Z"
     description: Integration Engine for Modern Healthcare Solutions
     digest: c51de2777df0a8d3f4ce361795a9167c70b8dbb7e39ff945ff9122d16f0dcf12
@@ -856,4 +878,4 @@ entries:
     urls:
     - termbox-0.1.0.tgz
     version: 0.1.0
-generated: "2026-11-19T11:03:55.61534795Z"
+generated: "2026-11-25T04:10:43.974694932Z"
