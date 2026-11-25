@@ -29,6 +29,6 @@ dependencies:
   repository: file://../interop
   condition: interop.enabled
 - name: prior-auth
-  version: 0.1.0
+  version: 0.3.0
   repository: file://../prior-auth
   condition: prior-auth.enabled
