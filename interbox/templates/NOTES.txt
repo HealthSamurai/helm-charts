@@ -37,12 +37,9 @@ Webhook port (webhook sources and pull senders), TCP {{ $webhookPort }} on the {
 Aidbox: {{ . }}
 {{- end }}
 
+Workspace service: Deployment {{ include "interbox.fullname" . }}-workspace, reached by the main pods at {{ include "interbox.workspaceServiceUrl" . }}.
+
 {{- if not (or .Values.secrets.existingSecretName .Values.secrets.INTERBOX_LICENSE (index (.Values.secrets.data | default dict) "INTERBOX_LICENSE")) }}
 
 License: not set. Activate it in the dashboard.
-{{- if eq ((.Values.probe.readiness | default dict).path | default .Values.probe.path) "/api/ready" }}
-Until then /api/ready keeps the pod NotReady and the Service carries no traffic,
-so open the dashboard with:
-  kubectl -n {{ .Release.Namespace }} port-forward deploy/{{ include "interbox.fullname" . }} {{ .Values.service.port }}
-{{- end }}
 {{- end }}

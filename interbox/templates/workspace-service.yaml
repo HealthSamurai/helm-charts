@@ -1,0 +1,111 @@
+{{- if .Values.workspaceService.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "interbox.fullname" . }}-workspace
+  labels:
+    {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+  annotations:
+    {{- /* The checkout can hold edits nobody pushed, so helm uninstall leaves it. */}}
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.workspaceService.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.workspaceService.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interbox.fullname" . }}-workspace
+  labels:
+    {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+  {{- with .Values.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ eq (int .Values.replicaCount) 0 | ternary 0 1 }}
+  selector:
+    matchLabels:
+      {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 8 }}
+      annotations:
+        {{- include "interbox.podChecksums" . | nindent 8 }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "interbox.podBase" . | nindent 6 }}
+      {{- if .Values.workspaceService.persistence.enabled }}
+      {{- with .Values.workspaceService.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      containers:
+        - name: workspace
+          image: {{ include "interbox.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - workspace
+          ports:
+            - name: http
+              containerPort: {{ include "interbox.apiPort" . }}
+              protocol: TCP
+          {{- include "interbox.containerEnv" . | nindent 10 }}
+          {{- /* Not interbox.readinessPath: an older image here is a full engine, and on 2.5.0 the workspace role's /api/ready adds nothing. */}}
+          {{- with include "interbox.probes" (dict "root" . "path" "/api/health") | trim }}
+          {{- . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.workspaceService.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- /* The engine's default INTERBOX_WORKSPACE_CACHE. */}}
+            - name: interbox-workspace-checkout
+              mountPath: /tmp/interbox-engine
+      volumes:
+        - name: interbox-workspace-checkout
+          {{- if .Values.workspaceService.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "interbox.fullname" . }}-workspace
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with include "interbox.scheduling" . }}
+      {{- . | nindent 6 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interbox.fullname" . }}-workspace
+  labels:
+    {{- include "interbox.workspaceServiceLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "interbox.workspaceServiceSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ include "interbox.apiPort" . }}
+      targetPort: http
